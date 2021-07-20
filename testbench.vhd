@@ -1,6 +1,11 @@
 ----------------------------------------------------------------------
--- File Downloaded from http://www.nandland.com
-----------------------------------------------------------------------
+
+-- testbench for the simulation of dice on the nandland GoBoard 
+--this testbench really just sets a clock to run
+--later expansion is for triggering with the button
+--but for starters just working with the clock. 
+  ----------------------------------------------------
+
 library ieee;
 use ieee.std_logic_1164.ALL;
 use ieee.numeric_std.all;
@@ -31,13 +36,6 @@ begin
  
  
  
- 
+ --set clock signal
   i_Clk_tb <= not i_Clk_tb after c_CLK_PERIOD/2;
-   
-  --process is
-  --begin
-  
-     
-  --end process;
-   
-end Behave;
+   end Behave;

@@ -1,3 +1,10 @@
+----------------------------------------------------------------------
+-- converts an incoming binary number to a hex value  
+--which corresponds to the proper configuration for a 7 segment
+--display output
+--only 3 bit since we just need to count to 6. 
+----------------------------------------------------------------------
+
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
@@ -41,8 +48,6 @@ architecture rtl of bin_to_7seg_3bit is
 						r_Hex_Encoding <= X"5B";
 					when  "110"=>
 						r_Hex_Encoding <= X"5F";
-					when  "111"=>
-						r_Hex_Encoding <= X"70";	
 					when others =>
 						r_Hex_Encoding <= X"7E"; --Hex value	
 						
