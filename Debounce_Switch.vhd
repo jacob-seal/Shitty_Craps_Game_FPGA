@@ -1,3 +1,5 @@
+--switch debouncing module....currently set to debounce time of 10 ms
+
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
