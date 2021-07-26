@@ -1,10 +1,7 @@
 ----------------------------------------------------------------------
 --dice simulation for the nandland GoBoard 
---every 1 second of time the algorithm should trigger a new random value
+--button press of switch 4 triggers a new random value between 1 and 6
 --this value is displayed in binary on the 3 LED outputs o_LED_1, o_LED_2, and o_LED_3
---later expansion planned is for triggering with switch 4, but currently switch 4 doesnt do anything and all related code is commented out
---LED 4 is set to toggle each time the 1 second counter is reached.....this is just for debugging so I know
---at least we are entering this if statement
 --binary to 7segment converter previously developed in a nandland tutorial 
 -- it is simulated and tested in several designs now
 --the random number is only psuedo random
@@ -33,7 +30,6 @@ port (
 		o_LED_1			:	out std_logic;
 		o_LED_2			:	out std_logic;
 		o_LED_3			:	out std_logic;
-		o_LED_4			:	out std_logic;
 		
 		--output 7 seg display
 		o_Segment2_A	: 	out std_logic;	
@@ -55,9 +51,7 @@ architecture Behavioral of edice is
 	
 	--counters for psuedo_random processing
 	signal counter_1 : integer range 1 to 6 := 1;
-    signal counter_2 : integer range 1 to 6 := 1;	--indicates that 1 second is reached or not
-	
-	signal r_LED_4 : std_logic := '0'; 															--testing signal to see if counter is reaching its mark 
+    signal counter_2 : integer range 1 to 6 := 1;
 
 	--internal wires for connecting 7Seg outputs to bin converter outputs
 	signal w_Segment2_A : std_logic:= '0';
@@ -173,9 +167,7 @@ begin
 	begin
 		if rising_edge(i_Clk) then
 			
-			if button_pressed = '1' then																--1 second reached
-				r_LED_4 <= not r_LED_4;																--toggle LED4 just for debug purposes
-			
+			if button_pressed = '1' then																--button has been pressed
 				--capture the value of counter 2 as the random number
 				rand_temp <= std_logic_vector(to_unsigned(counter_2,3));
 			end if;
@@ -185,13 +177,10 @@ begin
 		rand <= rand_temp;																																					--assign random number to internal signal "rand"
 	end process;
 	
-	
-	
 	--LED outputs are the 3 bits of rand
 	o_LED_1	<= rand(2);
 	o_LED_2	<= rand(1);
 	o_LED_3	<= rand(0);
 	
-	o_LED_4 <= r_LED_4;
 end Behavioral;
 
