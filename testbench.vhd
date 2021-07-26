@@ -18,7 +18,7 @@ architecture Behave of dice_TB is
   -- Test Bench uses a 100 MHz Clock --the goBoard uses 25MHz just FYI
   constant c_CLK_PERIOD : time := 10 ns;
    
-  signal i_Switch_4_tb     : std_logic                    := '0';
+  --signal i_Switch_4_tb     : std_logic                    := '0';
   signal i_Clk_tb     : std_logic                    := '0';
   
    
@@ -30,7 +30,7 @@ begin
       width => 3
       )
     port map (
-      i_Switch_4     => i_Switch_4_tb,
+      --i_Switch_4     => i_Switch_4_tb,
       i_Clk       => i_Clk_tb
       );
  
