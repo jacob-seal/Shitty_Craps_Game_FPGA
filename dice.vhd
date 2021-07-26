@@ -21,9 +21,11 @@ entity edice is
 generic ( width : integer := 3 );
 port (
 		
+		--inputs
 		--i_Switch_4 		: 	in std_logic;													--push button to trigger random number
 		i_Clk			:	in std_logic;														--25Mhz clock 
 		
+		--outputs
 		--LED outputs for binary 
 		o_LED_1			:	out std_logic;
 		o_LED_2			:	out std_logic;
@@ -44,9 +46,9 @@ end edice;
 architecture Behavioral of edice is
 	--signal button_pressed : std_logic := '0';	
 	constant c_1sec : integer := 25000000; 														--1 second of clock cycles
-	signal divider : integer range 0 to c_1sec := 0; 											--range of 1 second
+	signal second_counter : integer range 0 to c_1sec := 0; 									--counter with range of 1 second
 	signal rand	:	std_logic_vector(2 downto 0) := (others => '0');							--signal for assignment to outputs
-	signal r_1_sec_flag : std_logic := '0';
+	signal r_1_sec_flag : std_logic := '0';														--indicates that 1 second is reached or not
 	
 	signal r_LED_4 : std_logic := '0'; 															--testing signal to see if counter is reaching its mark 
 
@@ -64,7 +66,11 @@ architecture Behavioral of edice is
 	--signal r_Switch_4 	:std_logic := '0';
 	--signal w_Switch_4 	:std_logic;
 	
-	signal rand_temp : std_logic_vector(width-1 downto 0):=(width-1 => '1', others => '0'); 	--used for calculation of rand
+	--signals used to calculate the random number
+	signal rand_temp : std_logic_vector(width-1 downto 0):=(width-1 => '1', others => '0'); 	
+	signal r_rand_temp_2 : std_logic_vector(width-2 downto 0):=(width-2 => '1', others => '0');	
+	
+	
 	
 begin
 	
@@ -115,15 +121,15 @@ begin
 	
 	
 	--process just counts up to 1 second value and then sets a flag indicating 1 second is reached
-	clk_divider : process(i_Clk) 
+	clk_second_counter : process(i_Clk) 
 	begin
 		if(rising_edge(i_Clk)) then
-				if divider = c_1sec - 1 then
-					divider <= 0;
+				if second_counter = c_1sec - 1 then
+					second_counter <= 0;
 					r_1_sec_flag <= '1';
 					
 				else	
-					divider<=divider + 1;
+					second_counter<=second_counter + 1;
 					r_1_sec_flag <= '0';
 				end if;
 			end if;	
@@ -133,28 +139,44 @@ begin
 	--process contains the algorithm which creates the random number if the 1 sec counter is reached
 	create_rand : process(i_Clk)
 		
-		variable temp : std_logic := '0';
+		variable temp : std_logic := '0';															--holds the XOR value which makes the random behavior possible
+		
 	begin
 		if rising_edge(i_Clk) then
+			
 			if r_1_sec_flag = '1' then																--1 second reached
 				r_LED_4 <= not r_LED_4;																--toggle LED4 just for debug purposes
-		--generate next random number
-				temp := rand_temp(width-1) xor rand_temp(width-2);
-				rand_temp(width-1 downto 1) <= rand_temp(width-2 downto 0);
-				rand_temp(0) <= temp;
+			
+				--generate next random number
+				
+				--generate new LSB for rand_temp
+				temp := r_rand_temp_2(width-2) xor r_rand_temp_2(width-3);									
+				
+				--shift rand temp left and concatenate with new value of temp
+				rand_temp <= rand_temp(1 downto 0) & temp;
+				
+				--rand_temp <= std_logic_vector(unsigned(rand_temp) sll 1); 
+				--rand_temp(0) <= temp;
+				
+				
+				
+				
 			end if;
 		end if;
-		rand <= rand_temp;																			--assign random number to internal signal "rand"
-	
+		
+		--capture leftmost 2 bits of rand_temp for next temp calculation
+		r_rand_temp_2 <= rand_temp(2 downto 1);
+		--assign random number to internal signal "rand" which is connected to the outputs
+		rand <= rand_temp;																																					--assign random number to internal signal "rand"
 	end process;
 	
 	
+	
 	--LED outputs are the 3 bits of rand
-	o_LED_1	<= std_logic(rand(2));
-	o_LED_2	<= std_logic(rand(1));
-	o_LED_3	<= std_logic(rand(0));
+	o_LED_1	<= rand(2);
+	o_LED_2	<= rand(1);
+	o_LED_3	<= rand(0);
 	
 	o_LED_4 <= r_LED_4;
 end Behavioral;
-
 
