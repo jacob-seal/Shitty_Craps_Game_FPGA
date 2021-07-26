@@ -1,14 +1,27 @@
-----------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------
+--Developed By : Jacob Seal
+--sealenator@gmail.com
+--07-26-2021
+--filename: dice.vhd
+--entity edice
+--
+--general notes:*********************************************************************************
 --dice simulation for the nandland GoBoard 
+<<<<<<< Updated upstream
 --button press of switch 4 triggers a new random value between 1 and 6
 --this value is displayed in binary on the 3 LED outputs o_LED_1, o_LED_2, and o_LED_3
 --binary to 7segment converter previously developed in a nandland tutorial 
 -- it is simulated and tested in several designs now
+=======
+--pushing switch 4 triggers a new random integer between 1 and 6 to display on the 7 segment
+--binary to 7segment converter  and switch debouncer previously developed in a nandland tutorial 
+>>>>>>> Stashed changes
 --the random number is only psuedo random
 --it is based on 2 counters and grabs the value of counter_2 when the button is pressed
 --even though it is just an integer counting up to 6 the randomness is brought by
 --the human pressing the button at a random time interval....so it seems random to the user
-----------------------------------------------------------------------
+--***********************************************************************************************
+-------------------------------------------------------------------------------------------------
 
 
 library IEEE;
@@ -22,8 +35,8 @@ generic ( width : integer := 3 );
 port (
 		
 		--inputs
-		i_Switch_4 		: 	in std_logic;													--push button to trigger random number
-		i_Clk			:	in std_logic;														--25Mhz clock 
+		i_Switch_4 		: 	in std_logic;									--push button to trigger random number
+		i_Clk			:	in std_logic;									--25Mhz clock 
 		
 		--outputs
 		--LED outputs for binary 
@@ -44,14 +57,16 @@ end edice;
 
 architecture Behavioral of edice is
 	signal button_pressed : std_logic := '0';	
-	constant c_1sec : integer := 25000000; 														--1 second of clock cycles
-	signal second_counter : integer range 0 to c_1sec := 0; 									--counter with range of 1 second
-	signal rand	:	std_logic_vector(2 downto 0) := (others => '0');							--signal for assignment to outputs
-	signal r_1_sec_flag : std_logic := '0';	
+	signal rand	:	std_logic_vector(2 downto 0) := (others => '0');		--signal for assignment to outputs
 	
-	--counters for psuedo_random processing
+	--counters for psuedo_random logic
 	signal counter_1 : integer range 1 to 6 := 1;
+<<<<<<< Updated upstream
     signal counter_2 : integer range 1 to 6 := 1;
+=======
+    signal counter_2 : integer range 1 to 6 := 1;	
+	
+>>>>>>> Stashed changes
 
 	--internal wires for connecting 7Seg outputs to bin converter outputs
 	signal w_Segment2_A : std_logic:= '0';
@@ -68,8 +83,7 @@ architecture Behavioral of edice is
 	signal w_Switch_4 	:std_logic;
 	
 	--signals used to calculate the random number
-	signal rand_temp : std_logic_vector(width-1 downto 0):=(width-1 => '1', others => '0'); 	
-		
+	signal rand_temp : std_logic_vector(width-1 downto 0):=(width-1 => '1', others => '0'); 
 	
 	
 	
@@ -110,9 +124,9 @@ begin
 	register_button : process(i_Clk) is
 	begin
 		if rising_edge(i_Clk) then
-			r_Switch_4 <= w_Switch_4; 																--create a registered version of the input(previous value)
-				if w_Switch_4 = '1'and r_Switch_4 = '0' then 											--if rising edge(button PRESS)
-					button_pressed <= '1';															--button has been pressed
+			r_Switch_4 <= w_Switch_4; 											--create a registered version of the input(previous value)
+				if w_Switch_4 = '1'and r_Switch_4 = '0' then 					--if rising edge(button PRESS)
+					button_pressed <= '1';										--button has been pressed
 					
 				else 
 					button_pressed <= '0';
@@ -120,22 +134,6 @@ begin
 		end if;		
 	end process;
 	
-	
-	--process just counts up to 1 second value and then sets a flag indicating 1 second is reached
-	clk_second_counter : process(i_Clk) 
-	begin
-		if(rising_edge(i_Clk)) then
-				if second_counter = c_1sec - 1 then
-					second_counter <= 0;
-					r_1_sec_flag <= '1';
-					
-				else	
-					second_counter<=second_counter + 1;
-					r_1_sec_flag <= '0';
-				end if;
-			end if;	
-			
-	end process;
 	
 	--counter 1 counts from 1 to 6 incrementing on every clock cycle
 	counter_1_proc : process(i_Clk)
@@ -167,7 +165,12 @@ begin
 	begin
 		if rising_edge(i_Clk) then
 			
+<<<<<<< Updated upstream
 			if button_pressed = '1' then																--button has been pressed
+=======
+			if button_pressed = '1' then											--button pressed
+			
+>>>>>>> Stashed changes
 				--capture the value of counter 2 as the random number
 				rand_temp <= std_logic_vector(to_unsigned(counter_2,3));
 			end if;
