@@ -1,22 +1,22 @@
--------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
 --Developed By : Jacob Seal
 --sealenator@gmail.com
 --07-26-2021
 --filename: dice.vhd
 --entity edice
 --
---general notes:*********************************************************************************
+--general notes:****************************************************************
 --dice simulation for the nandland GoBoard 
 --button press of switch 4 triggers a new random value between 1 and 6
---this value is displayed in binary on the 3 LED outputs o_LED_1, o_LED_2, and o_LED_3
+--this value is displayed in binary on the 3 LED outputs o_LED_1, o_LED_2, and --o_LED_3
 --binary to 7segment converter previously developed in a nandland tutorial 
 -- it is simulated and tested in several designs now
 --the random number is only psuedo random
---it is based on 2 counters and grabs the value of counter_2 when the button is pressed
---even though it is just an integer counting up to 6 the randomness is brought by
---the human pressing the button at a random time interval....so it seems random to the user
---***********************************************************************************************
--------------------------------------------------------------------------------------------------
+--it is based on 2 counters and grabs the value of counter_2 when the button is --pressed
+--even though it is just an integer counting up to 6 the randomness is brought --by
+--the human pressing the button at a random time interval....so it seems random --to the user
+--******************************************************************************
+--------------------------------------------------------------------------------
 
 
 library IEEE;
@@ -30,8 +30,10 @@ generic ( width : integer := 3 );
 port (
 		
 		--inputs
-		i_Switch_4 		: 	in std_logic;									--push button to trigger random number
-		i_Clk			:	in std_logic;									--25Mhz clock 
+		--push button to trigger random number
+		i_Switch_4 		: 	in std_logic;									
+		--25Mhz clock
+		i_Clk			:	in std_logic;									 
 		
 		--outputs
 		--LED outputs for binary 
@@ -52,7 +54,8 @@ end edice;
 
 architecture Behavioral of edice is
 	signal button_pressed : std_logic := '0';	
-	signal rand	:	std_logic_vector(2 downto 0) := (others => '0');		--signal for assignment to outputs
+	--signal for assignment to outputs
+	signal rand	:	std_logic_vector(2 downto 0) := (others => '0');		
 	
 	--counters for psuedo_random logic
 	signal counter_1 : integer range 1 to 6 := 1;
@@ -149,20 +152,20 @@ begin
         end if;
     end process;    
 
-	--process contains the algorithm which creates the (psuedo)random number if the 1 sec counter is reached
+	--process contains the algorithm which creates the (psuedo)random number if --the 1 sec counter is reached
 	create_rand : process(i_Clk)
 		
 	begin
 		if rising_edge(i_Clk) then
 			
-			if button_pressed = '1' then																--button has been pressed
+			if button_pressed = '1' then			--button has been pressed
 				--capture the value of counter 2 as the random number
 				rand_temp <= std_logic_vector(to_unsigned(counter_2,3));
 			end if;
 		end if;
 		
-		--assign random number to internal signal "rand" which is connected to the outputs
-		rand <= rand_temp;																																					--assign random number to internal signal "rand"
+		--assign random number to internal signal "rand" which is connected to --the outputs
+		rand <= rand_temp;
 	end process;
 	
 	--LED outputs are the 3 bits of rand
