@@ -7,15 +7,10 @@
 --
 --general notes:*********************************************************************************
 --dice simulation for the nandland GoBoard 
-<<<<<<< Updated upstream
 --button press of switch 4 triggers a new random value between 1 and 6
 --this value is displayed in binary on the 3 LED outputs o_LED_1, o_LED_2, and o_LED_3
 --binary to 7segment converter previously developed in a nandland tutorial 
 -- it is simulated and tested in several designs now
-=======
---pushing switch 4 triggers a new random integer between 1 and 6 to display on the 7 segment
---binary to 7segment converter  and switch debouncer previously developed in a nandland tutorial 
->>>>>>> Stashed changes
 --the random number is only psuedo random
 --it is based on 2 counters and grabs the value of counter_2 when the button is pressed
 --even though it is just an integer counting up to 6 the randomness is brought by
@@ -61,12 +56,7 @@ architecture Behavioral of edice is
 	
 	--counters for psuedo_random logic
 	signal counter_1 : integer range 1 to 6 := 1;
-<<<<<<< Updated upstream
     signal counter_2 : integer range 1 to 6 := 1;
-=======
-    signal counter_2 : integer range 1 to 6 := 1;	
-	
->>>>>>> Stashed changes
 
 	--internal wires for connecting 7Seg outputs to bin converter outputs
 	signal w_Segment2_A : std_logic:= '0';
@@ -165,12 +155,7 @@ begin
 	begin
 		if rising_edge(i_Clk) then
 			
-<<<<<<< Updated upstream
 			if button_pressed = '1' then																--button has been pressed
-=======
-			if button_pressed = '1' then											--button pressed
-			
->>>>>>> Stashed changes
 				--capture the value of counter 2 as the random number
 				rand_temp <= std_logic_vector(to_unsigned(counter_2,3));
 			end if;
