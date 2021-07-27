@@ -1,4 +1,4 @@
-# electronic_dice_on_FPGA-Nandland-GoBoard
+# electronic_dice_game-Nandland-GoBoard
  implimentation of electronic dice on the nandland GoBoard
  includes a random number generator with 3 bits(integer values 1 to 6....like dice DUH!!!)
  display output on 7 segment LED
