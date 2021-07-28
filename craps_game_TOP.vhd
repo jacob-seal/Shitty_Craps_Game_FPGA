@@ -217,7 +217,7 @@ begin
 
 		r_rand_1 <= std_logic_vector(to_unsigned(w_rand_temp_1,3));	
 
-	--instantiate Dice 1
+	--instantiate Dice 2
 	Dice_Inst_2 : entity work.dice
 		generic map (
 			clk_divider => c_clk_divider_dice_2
