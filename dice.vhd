@@ -47,10 +47,11 @@ generic(
 );
 port (
 		--inputs
-  --push button to trigger random number
-		i_Switch_4 		: 	in std_logic;									
+  		--push button to trigger random number
+		i_Switch 		: 	in std_logic;									
 		--25Mhz clock
 		i_Clk			:	in std_logic;									 
+		
 		--outputs
 		--output integer value between 1 and 6 
 		o_rand 			: 	out integer
@@ -58,16 +59,16 @@ port (
 end dice;
 
 
-architecture Behavioral of edice is
+architecture Behavioral of dice is
+	
 	--counter for psuedo_random logic
 	signal r_counter : integer range 1 to 6 := 1;
 
 	--counter for clock divider
 	signal r_clk_counter : integer range 0 to clk_divider := 0;
 
-	
 	--signal used to register the random number for the output o_rand
-	signal r_rand_temp : integer range 1 to 6;	
+	signal w_rand_temp : integer range 1 to 6;	
 	
 	
 	
@@ -100,12 +101,12 @@ begin
       --check for button press
 			if i_Switch = '1' then			
 				--capture the value of counter as the random number
-				r_rand_temp <= r_counter;
+				w_rand_temp <= r_counter;
 			end if;
 		end if;
 		
 		--assign random number to output "o_rand"
-		o_rand <= r_rand_temp;
+		o_rand <= w_rand_temp;
 
 end process;
 	

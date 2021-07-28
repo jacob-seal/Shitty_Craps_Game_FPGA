@@ -114,11 +114,11 @@ architecture Behavioral of craps_game_TOP is
 	signal r_Switch_4 	:std_logic := '0';
 	signal w_Switch_4 	:std_logic;
 	
-	--holds the returned random numbers
-	signal w_rand_temp_1 : integer range 1 to 6; 
-	signal w_rand_temp_2 : integer range 1 to 6; 
+	--holds the returned random numbers for each dice 
+	signal w_rand_temp_1 : integer range 1 to 6; --dice 1
+	signal w_rand_temp_2 : integer range 1 to 6; --dice 2
 	
-	--signal for assignment to outputs - must be std_logic_vector
+	--signal for assignment of random number to 7 seg display
 	signal r_rand_1	:	std_logic_vector(2 downto 0) := (others => '0');
 	signal r_rand_2	:	std_logic_vector(2 downto 0) := (others => '0');
 
@@ -127,7 +127,7 @@ architecture Behavioral of craps_game_TOP is
 	constant c_clk_divider_dice_1 : integer := 1;	--1 = no clock division
 	constant c_clk_divider_dice_2 : integer := 3;
 
-	--state machine signals that control the game
+	--FSM states that control the game
 	type t_FSM_Main is (s_Idle, s_Tally, s_Win, s_Lose,
                      s_Point_Numbers);
 	signal r_FSM_Main : t_FSM_Main := s_Idle;
@@ -192,7 +192,7 @@ begin
 
 	
 	
-	--process to set button pressed flag on rising edge of switch
+	--process to set button pressed flag on rising edge of switch 4
 	register_button : process(i_Clk) is
 	begin
 		if rising_edge(i_Clk) then
@@ -234,8 +234,11 @@ begin
 	FSM : process (i_Clk)
 	--create variable to hold the addition of the 2 dice
 	variable r_result	: integer range 0 to 12 := 0;
-	variable r_result_2 	: integer range 0 to 12 := 0; --to register the current result and compare it against the next
+	--to register the current result and compare it against the next
+	variable r_result_2 	: integer range 0 to 12 := 0; 
+	--flag indicating we are in point numbers round
 	variable point_flag : std_logic := '0';
+	--counter to wait 2 seconds before changing states
 	variable r_2second_counter : integer range 0 to 50000000 := 0;
 	begin
 	if rising_edge(i_Clk) then
@@ -266,10 +269,7 @@ begin
           	end if;
 
         -- button has been pressed we must parse the result
-        when s_Tally =>
-			--register the dice rolls to go to the 7 seg display
-			--r_rand_1 <= std_logic_vector(to_unsigned(w_rand_temp_1,3));	
-			--r_rand_2 <= std_logic_vector(to_unsigned(w_rand_temp_2,3));	
+        when s_Tally =>	
         	--add the 2 dice rolls
 			r_result := w_rand_temp_1 + w_rand_temp_2;  
 
