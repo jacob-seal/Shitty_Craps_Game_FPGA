@@ -1,10 +1,30 @@
 -------------------------------------------------------------------------------------------------
 --Developed By : Jacob Seal
 --sealenator@gmail.com
---07-26-2021
+--07-27-2021
 --filename: dice.vhd
---entity edice
+--entity dice
+--******************************************************************************
+--general notes:                                                               
+--dice simulation for an FPGA written in VHDL								   
+--button press of switch triggers a new random value between 1 and 6		   
+--the button is assumed to be already debounced								   
+--the random number is only psuedo random									   
+--the human is pressing the button at a random time interval....so it seems    --random to the user
 --
+--Generics:
+--clk_divider - determines the clock speed so different instantiated dice will
+--		have a different value. The counter runs at speed 1/clk_divider
+--		ex:
+--		1: no clock division - counter runs at the clock speed of the FPGA
+--		2: counter runs at half speed
+--      3: counter runs at 1/3rd speed
+--
+--Inputs:
+--i_Clk - input clock from the FPGA clock input
+--i_Switch - debounced signal from a switch on the FPGA
+--
+<<<<<<< Updated upstream
 --general notes:*********************************************************************************
 --dice simulation for the nandland GoBoard 
 --button press of switch 4 triggers a new random value between 1 and 6
@@ -17,6 +37,12 @@
 --the human pressing the button at a random time interval....so it seems random to the user
 --***********************************************************************************************
 -------------------------------------------------------------------------------------------------
+=======
+--Outputs
+--o_rand - psuedo-random integer value returned to the instantiating module
+--******************************************************************************
+--------------------------------------------------------------------------------
+>>>>>>> Stashed changes
 
 
 library IEEE;
@@ -25,135 +51,80 @@ use ieee.std_logic_unsigned.all;
 use ieee.numeric_std.all;
 
 
-entity edice is
-generic ( width : integer := 3 );
+entity dice is
+generic(
+		--clock divider factor
+		clk_divider		:	integer
+);
 port (
-		
 		--inputs
+<<<<<<< Updated upstream
 		i_Switch_4 		: 	in std_logic;									--push button to trigger random number
 		i_Clk			:	in std_logic;									--25Mhz clock 
+=======
+		--25Mhz clock
+		i_Clk			:	in std_logic;	
+		--push button to trigger random number(assumes switch already debounced)
+		i_Switch 		: 	in std_logic;								 
+>>>>>>> Stashed changes
 		
 		--outputs
-		--LED outputs for binary 
-		o_LED_1			:	out std_logic;
-		o_LED_2			:	out std_logic;
-		o_LED_3			:	out std_logic;
-		
-		--output 7 seg display
-		o_Segment2_A	: 	out std_logic;	
-		o_Segment2_B	: 	out std_logic;
-		o_Segment2_C	: 	out std_logic;
-		o_Segment2_D	: 	out std_logic;
-		o_Segment2_E	: 	out std_logic;
-		o_Segment2_F	: 	out std_logic;
-		o_Segment2_G	: 	out std_logic
+		--output integer value between 1 and 6 
+		o_rand 			: 	out integer
 		);
-end edice;
+end dice;
 
+<<<<<<< Updated upstream
 architecture Behavioral of edice is
 	signal button_pressed : std_logic := '0';	
 	signal rand	:	std_logic_vector(2 downto 0) := (others => '0');		--signal for assignment to outputs
+=======
+architecture Behavioral of dice is			
+>>>>>>> Stashed changes
 	
-	--counters for psuedo_random logic
-	signal counter_1 : integer range 1 to 6 := 1;
-    signal counter_2 : integer range 1 to 6 := 1;
+	--counter for psuedo_random logic
+	signal r_counter : integer range 1 to 6 := 1;
 
-	--internal wires for connecting 7Seg outputs to bin converter outputs
-	signal w_Segment2_A : std_logic:= '0';
-	signal w_Segment2_B : std_logic:= '0';
-	signal w_Segment2_C : std_logic:= '0';
-	signal w_Segment2_D : std_logic:= '0';
-	signal w_Segment2_E : std_logic:= '0';
-	signal w_Segment2_F : std_logic:= '0';
-	signal w_Segment2_G : std_logic:= '0';
+	--counter for clock divider
+	signal r_clk_counter : integer range 0 to clk_divider := 0;
 
-
-	--SWITCH SIGNALS
-	signal r_Switch_4 	:std_logic := '0';
-	signal w_Switch_4 	:std_logic;
 	
-	--signals used to calculate the random number
-	signal rand_temp : std_logic_vector(width-1 downto 0):=(width-1 => '1', others => '0'); 
+	--signal used to register the random number for the output o_rand
+	signal r_rand_temp : integer range 1 to 6;	
 	
 	
 	
 begin
 	
-	--convert binary to output for 7Seg2   (right display)	
-	bin_converter_seg2 : entity work.bin_to_7seg_3bit
-		port map(
-		i_Clk 	 => i_Clk,
-		i_Bin_Num => rand,
-		o_Seg_A => w_Segment2_A,
-		o_Seg_B => w_Segment2_B,
-		o_Seg_C => w_Segment2_C,
-		o_Seg_D => w_Segment2_D,
-		o_Seg_E => w_Segment2_E,
-		o_Seg_F => w_Segment2_F,
-		o_Seg_G => w_Segment2_G
-		);
-	
-	--7Seg2 outputs
-	o_Segment2_A <= not w_Segment2_A;
-	o_Segment2_B <= not w_Segment2_B;
-	o_Segment2_C <= not w_Segment2_C;
-	o_Segment2_D <= not w_Segment2_D;
-	o_Segment2_E <= not w_Segment2_E;
-	o_Segment2_F <= not w_Segment2_F;
-	o_Segment2_G <= not w_Segment2_G;
-	
-	--debounce switch 4	
-	Debounce_Inst4 : entity work.Debounce_Switch
-		port map(
-		i_Clk 	 => i_Clk,
-		i_switch => i_Switch_4,
-		o_switch => w_Switch_4);
-	
-	
-	--process to set enable when pressing switch 4
-	register_button : process(i_Clk) is
-	begin
-		if rising_edge(i_Clk) then
-			r_Switch_4 <= w_Switch_4; 											--create a registered version of the input(previous value)
-				if w_Switch_4 = '1'and r_Switch_4 = '0' then 					--if rising edge(button PRESS)
-					button_pressed <= '1';										--button has been pressed
-					
-				else 
-					button_pressed <= '0';
-				end if;
-		end if;		
-	end process;
-	
-	
-	--counter 1 counts from 1 to 6 incrementing on every clock cycle
-	counter_1_proc : process(i_Clk)
+	--counts from 1 to 6 incrementing on every clock cycle when the 
+	--clock divider reaches its factor
+	counter_proc : process(i_Clk)
     begin
     	if rising_edge(i_Clk) then
-        	if counter_1 = 6 then
-            	counter_1 <= 1;
-            else
-            	counter_1 <= counter_1 + 1;
-            end if;
+			if r_clk_counter = clk_divider - 1 then
+				r_clk_counter <= 0;
+        		if r_counter = 6 then
+            		r_counter <= 1;
+            	else
+            		r_counter <= r_counter + 1;
+            	end if;
+			else
+				r_clk_counter <= r_clk_counter + 1;
+			end if;	
         end if;
     end process;   
-    
-	--counter 1 counts from 1 to 6 incrementing only when counter_1 rolls over
-    counter_2_proc : process(i_Clk)
-    begin
-    	if rising_edge(i_Clk) then
-        	if counter_1 = 6 and counter_2 < 6 then
-            	counter_2 <= counter_2 + 1;
-            elsif counter_1 = 6 and counter_2 = 6 then
-            	counter_2 <= 1;
-            end if;   
-        end if;
-    end process;    
+       
 
+<<<<<<< Updated upstream
 	--process contains the algorithm which creates the (psuedo)random number if the 1 sec counter is reached
+=======
+	--captures the value of the counter when the button is pressed
+>>>>>>> Stashed changes
 	create_rand : process(i_Clk)
 		
 	begin
 		if rising_edge(i_Clk) then
+<<<<<<< Updated upstream
 			
 			if button_pressed = '1' then																--button has been pressed
 				--capture the value of counter 2 as the random number
@@ -163,12 +134,17 @@ begin
 		
 		--assign random number to internal signal "rand" which is connected to the outputs
 		rand <= rand_temp;																																					--assign random number to internal signal "rand"
+=======
+			--check for button press
+			if i_Switch = '1' then			
+				--capture the value of counter as the random number
+				r_rand_temp <= r_counter;
+			end if;
+		end if;
+		
+		--assign random number to output "o_rand"
+		o_rand <= r_rand_temp;
+>>>>>>> Stashed changes
 	end process;
 	
-	--LED outputs are the 3 bits of rand
-	o_LED_1	<= rand(2);
-	o_LED_2	<= rand(1);
-	o_LED_3	<= rand(0);
-	
 end Behavioral;
-
