@@ -195,7 +195,11 @@ begin
 
     --debounce switch 4	
 	Debounce_Inst4 : entity work.Debounce_Switch
-	port map(
+	generic map (
+        generic (
+            DEBOUNCE_LIMIT => 250000                            --10ms at 25MHz
+    )
+    port map(
 		i_Clk 	 => i_Clk,
 		i_switch => i_Switch_4,
 		o_switch => w_Switch_4);
