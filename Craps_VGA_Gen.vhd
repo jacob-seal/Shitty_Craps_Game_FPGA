@@ -158,7 +158,7 @@ begin
                 when 0 => --idle
                     w_text1 <= c_gamestate_stringmap(8);
                     w_text2 <= c_gamestate_stringmap(5);
-                    w_score <= "00";
+                    w_score <= "  ";
                     w_text3 <= c_gamestate_stringmap(9);
                     --w_Draw_Any <= w_draw_text1 or w_draw_text2;                                                       --uncomment to use splash screen
                     
@@ -173,7 +173,7 @@ begin
                     w_text2 <= c_gamestate_stringmap(0);
                     if w_point = '0' then
                         w_text1 <= c_gamestate_stringmap(4);
-                        w_score <= "00";
+                        w_score <= "  ";
                         w_text3 <= c_gamestate_stringmap(9);
                         r_string_3 := int_to_str(w_dice1 + w_dice2);
                         --w_Draw_Any <= w_draw_text1 or w_draw_dice;

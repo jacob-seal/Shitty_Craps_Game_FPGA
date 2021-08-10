@@ -478,7 +478,7 @@ begin
                 when s_Point_Numbers =>
                     
                     if point_flag = '0' then        --first time in Point Numbers round
-                        r_result_2 := r_result;     --register the current result for testing against the latest result 
+                        r_result_2 := r_result;     --register the current result for testing against the next result 
                         point_flag := '1';          --poing mode active!
                         r_FSM_Main <= s_Idle;       --go back to idle and start the round in point mode
                     else                            --re-entering point numbers round to determine if I rolled the same number
@@ -487,10 +487,6 @@ begin
                             r_result_2 := 0;
                             r_FSM_Main <= s_Win;
                         elsif r_result = 7 then
-                            point_flag := '0';
-                            r_result_2 := 0;
-                            r_FSM_Main <= s_Lose;
-                        elsif r_result = 11 then	
                             point_flag := '0';
                             r_result_2 := 0;
                             r_FSM_Main <= s_Lose;
