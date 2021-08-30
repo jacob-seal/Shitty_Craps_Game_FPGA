@@ -58,6 +58,7 @@ entity Craps_VGA_Gen is
 
         i_state         : in integer;
         i_bet           : in integer;
+        i_wallet        : in integer;
         i_point         : in std_logic;
         
         i_HSync         : in std_logic;
@@ -100,6 +101,7 @@ architecture RTL of Craps_VGA_Gen is
     signal w_point : std_logic;
     --signal to capture the current bet
     signal w_bet : integer range 0 to 10 := 0;
+    signal w_wallet : integer range 0 to 99;
     --signal to capture the current game state
     signal w_game_state : integer range 0 to 5 := 0;
     --outputs of all modules that draw to VGA
@@ -108,7 +110,9 @@ architecture RTL of Craps_VGA_Gen is
     signal w_draw_text2 : std_logic;
     signal w_draw_score : std_logic;
     signal w_draw_text3 : std_logic;
-    --signal w_Draw_Splash : std_logic;                     --uncomment to use splash screen
+    signal w_draw_text4 : std_logic;
+    signal w_draw_wallet : std_logic;
+    signal w_Draw_Splash : std_logic;                     --uncomment to use splash screen
     --connects output of all modules that draw to VGA
     signal w_Draw_Any       : std_logic;
     --unsigned counters (always positive) for row and column
@@ -121,6 +125,8 @@ architecture RTL of Craps_VGA_Gen is
     signal w_text2 : string (1 to c_gamestate_stringmap(0)'high);
     signal w_score : string(1 to 2); --score or bet(always 2 digit integer)
     signal w_text3 : string (1 to c_gamestate_stringmap(0)'high);
+    signal w_text4 : string (1 to c_gamestate_stringmap(0)'high);
+    signal w_wallet_str : string(1 to 2); --wallet...up to 99
 
 
 begin
@@ -130,6 +136,7 @@ begin
     w_game_state <= i_state;
     w_bet <= i_bet;
     w_point <= i_point;
+    w_wallet <= i_wallet;
 
     
     --this process sets the output messages to the VGA screen based upon the current
@@ -139,72 +146,86 @@ begin
     begin
         if rising_edge(i_Clk) then 
             case w_game_state is
-                -- when 0 => --splash screen --******uncomment to use splash screen
-                --     w_text1 <= c_gamestate_stringmap(9);
-                --     w_text2 <= c_gamestate_stringmap(9);
-                --     w_score <= "  ";
-                --     w_text3 <= c_gamestate_stringmap(9);
+                when 0 => --splash screen --******uncomment to use splash screen
+                    w_text1 <= c_gamestate_stringmap(9);
+                    w_text2 <= c_gamestate_stringmap(9);
+                    w_score <= "  ";
+                    w_text3 <= c_gamestate_stringmap(9);
                     
-                --      if ((to_integer(unsigned(w_Col_Count)) - 262 > -1 and
-                --                             to_integer(unsigned(w_Row_Count)) - 200 > -1 and
-                --                             to_integer(unsigned(w_Col_Count)) - 262 < dual_dice_bitmap(0)'high + 1 and
-                --                             to_integer(unsigned(w_Row_Count)) - 200 < dual_dice_bitmap'high + 1) and
-                --                             (dual_dice_bitmap(to_integer(unsigned(w_Row_Count)) - 200)(to_integer(unsigned(w_Col_Count)) - 262) = '1')) then
-                --                             w_Draw_Any <= '1';
-                --                             else 
-                --                             w_Draw_Any <= '0'; 
+                     if                     ((to_integer(unsigned(w_Col_Count)) - ((g_ACTIVE_COLS - dual_dice_bitmap(0)'high)/2) > -1 and
+                                            to_integer(unsigned(w_Row_Count)) - ((g_ACTIVE_ROWS - dual_dice_bitmap'high)/2) > -1 and
+                                            to_integer(unsigned(w_Col_Count)) - ((g_ACTIVE_COLS - dual_dice_bitmap(0)'high)/2) < dual_dice_bitmap(0)'high + 1 and
+                                            to_integer(unsigned(w_Row_Count)) - ((g_ACTIVE_ROWS - dual_dice_bitmap'high)/2) < dual_dice_bitmap'high + 1) and
+                                            (dual_dice_bitmap(to_integer(unsigned(w_Row_Count)) - ((g_ACTIVE_ROWS - dual_dice_bitmap'high)/2))(to_integer(unsigned(w_Col_Count)) - ((g_ACTIVE_COLS - dual_dice_bitmap(0)'high)/2)) = '1')) then
+                                            w_Draw_Any <= '1';
+                                            else 
+                                            w_Draw_Any <= '0'; 
 
-                --      end if;                       
-                when 0 => --idle
+                     end if;                       
+                when 1 => --idle
                     w_text1 <= c_gamestate_stringmap(8);
                     w_text2 <= c_gamestate_stringmap(5);
                     w_score <= "  ";
                     w_text3 <= c_gamestate_stringmap(9);
-                    --w_Draw_Any <= w_draw_text1 or w_draw_text2;                                                       --uncomment to use splash screen
+                    w_text4 <= c_gamestate_stringmap(11);
+                    w_wallet_str <= int_to_str_width_2(w_wallet);
+                    w_Draw_Any <= w_draw_text1 or w_draw_text2 or w_draw_wallet or w_draw_text4;                                                       --uncomment to use splash screen
                     
-                when 1 => --bets
+                when 2 => --bets
                     w_text1 <= c_gamestate_stringmap(8);
                     w_text2 <= c_gamestate_stringmap(6);
-                    w_score <= int_to_str(w_bet);
+                    w_score <= int_to_str_width_2(w_bet);
                     w_text3 <= c_gamestate_stringmap(9);
-                    --w_Draw_Any <= w_draw_text1 or w_draw_text2 or w_draw_score;                                       --uncomment to use splash screen
+                    w_text4 <= c_gamestate_stringmap(11);
+                    w_wallet_str <= int_to_str_width_2(w_wallet);
+                    w_Draw_Any <= w_draw_text1 or w_draw_text2 or w_draw_score or w_draw_wallet or w_draw_text4;                                       --uncomment to use splash screen
                     
-                when 2 => --roll
+                when 3 => --roll
                     w_text2 <= c_gamestate_stringmap(0);
                     if w_point = '0' then
                         w_text1 <= c_gamestate_stringmap(4);
                         w_score <= "  ";
                         w_text3 <= c_gamestate_stringmap(9);
-                        r_string_3 := int_to_str(w_dice1 + w_dice2);
-                        --w_Draw_Any <= w_draw_text1 or w_draw_dice;
+                        r_string_3 := int_to_str_width_2(w_dice1 + w_dice2);
+                        w_wallet_str <= int_to_str_width_2(w_wallet);
+                        w_text4 <= c_gamestate_stringmap(11);
+                        w_Draw_Any <= w_draw_text1 or w_draw_dice or w_draw_wallet or w_draw_text4 or w_draw_text2;
                     else
                         w_text1 <= c_gamestate_stringmap(10);
                         w_score <= r_string_3;
                         w_text3 <= c_gamestate_stringmap(3);
-                        --w_Draw_Any <= w_draw_dice or w_draw_text1 or w_draw_text2 or w_draw_score or w_draw_text3;    --uncomment to use splash screen
+                        w_wallet_str <= int_to_str_width_2(w_wallet);
+                        w_text4 <= c_gamestate_stringmap(11);
+                        w_Draw_Any <= w_draw_dice or w_draw_text1 or w_draw_text2 or w_draw_score or w_draw_text3 or w_draw_wallet or w_draw_text4;    --uncomment to use splash screen
                     end if;
                             
                     
-                when 3 => --tally
+                when 4 => --tally
                         w_text1 <= c_gamestate_stringmap(9);
                         w_text2 <= c_gamestate_stringmap(7);
-                        w_score <= int_to_str(w_dice1 + w_dice2);
+                        w_score <= int_to_str_width_2(w_dice1 + w_dice2);
                         w_text3 <= c_gamestate_stringmap(9);
-                        --w_Draw_Any <= w_draw_dice or w_draw_text2 or w_draw_score;                                    --uncomment to use splash screen
+                        w_wallet_str <= int_to_str_width_2(w_wallet);
+                        w_text4 <= c_gamestate_stringmap(11);
+                        w_Draw_Any <= w_draw_dice or w_draw_text2 or w_draw_score or w_draw_wallet or w_draw_text4;                                    --uncomment to use splash screen
                     
-                when 4 => --win
+                when 5 => --win
                     w_text1 <= c_gamestate_stringmap(9);
                     w_text2 <= c_gamestate_stringmap(7);
-                    w_score <= int_to_str(w_dice1 + w_dice2);
+                    w_score <= int_to_str_width_2(w_dice1 + w_dice2);
                     w_text3 <= c_gamestate_stringmap(2);
-                    --w_Draw_Any <= w_draw_dice or w_draw_text2 or w_draw_score or w_draw_text3;                        --uncomment to use splash screen
+                    w_wallet_str <= int_to_str_width_2(w_wallet);
+                    w_text4 <= c_gamestate_stringmap(11);
+                    w_Draw_Any <= w_draw_dice or w_draw_text2 or w_draw_score or w_draw_text3 or w_draw_wallet or w_draw_text4;                        --uncomment to use splash screen
                     
-                when 5 => --lose
+                when 6 => --lose
                     w_text1 <= c_gamestate_stringmap(9);
                     w_text2 <= c_gamestate_stringmap(7);
-                    w_score <= int_to_str(w_dice1 + w_dice2);
+                    w_score <= int_to_str_width_2(w_dice1 + w_dice2);
                     w_text3 <= c_gamestate_stringmap(1);
-                    --w_Draw_Any <= w_draw_dice or w_draw_text2 or w_draw_score or w_draw_text3;                        --uncomment to use splash screen
+                    w_wallet_str <= int_to_str_width_2(w_wallet);
+                    w_text4 <= c_gamestate_stringmap(11);
+                    w_Draw_Any <= w_draw_dice or w_draw_text2 or w_draw_score or w_draw_text3 or w_draw_wallet or w_draw_text4;                        --uncomment to use splash screen
 
                 when others =>
                     null;
@@ -300,6 +321,36 @@ begin
         	pixel => w_draw_text3 -- result
         );      
       
+  --sets output pixel for bank tally
+    textElement5: entity work.Pixel_On_Text
+            generic map (
+                textLength => w_wallet_str'high
+            )
+            port map(
+                clk => i_Clk,
+                displayText => w_wallet_str,
+                x_pos => 525,
+                y_pos => 250,
+                horzCoord => to_integer(unsigned(w_Col_Count)),
+                vertCoord => to_integer(unsigned(w_Row_Count)),
+                pixel => w_draw_wallet -- result
+            );    
+
+    --sets output pixel "current bank" message
+  textElement6: entity work.Pixel_On_Text
+        generic map (
+        	textLength => c_gamestate_stringmap(0)'high
+        )
+        port map(
+        	clk => i_Clk,
+        	displayText => w_text4,
+        	--position => (50, 50), -- text position (top left)
+            x_pos => 400,
+            y_pos => 250,
+        	horzCoord => to_integer(unsigned(w_Col_Count)),
+        	vertCoord => to_integer(unsigned(w_Row_Count)),
+        	pixel => w_draw_text4 -- result
+        );                    
 
   
   
@@ -309,18 +360,20 @@ begin
   -- writes the dice_bitmap to the screen
   -- centered
   -----------------------------------------------------------------------------
-  w_draw_dice <= '1' when                 (--draw dice 1
-                                            ((to_integer(unsigned(w_Col_Count)) - 262 > -1 and
+
+
+w_draw_dice <= '1' when                 (--draw dice 1
+                                            ((to_integer(unsigned(w_Col_Count)) - ((g_ACTIVE_COLS/2) - (2*c_medium_dicemap(w_dice1)(0)'high)) > -1 and
                                             to_integer(unsigned(w_Row_Count)) - 150 > -1 and
-                                            to_integer(unsigned(w_Col_Count)) - 262 < c_small_dicemap(w_dice1)(0)'high + 1 and
-                                            to_integer(unsigned(w_Row_Count)) - 150 < c_small_dicemap(w_dice1)'high + 1) and
-                                            (c_small_dicemap(w_dice1)(to_integer(unsigned(w_Row_Count)) - 150)(to_integer(unsigned(w_Col_Count)) - 262) = '1'))
+                                            to_integer(unsigned(w_Col_Count)) - ((g_ACTIVE_COLS/2) - (2*c_medium_dicemap(w_dice1)(0)'high)) < c_medium_dicemap(w_dice1)(0)'high + 1 and
+                                            to_integer(unsigned(w_Row_Count)) - 150 < c_medium_dicemap(w_dice1)'high + 1) and
+                                            (c_medium_dicemap(w_dice1)(to_integer(unsigned(w_Row_Count)) - 150)(to_integer(unsigned(w_Col_Count)) - ((g_ACTIVE_COLS/2) - (2*c_medium_dicemap(w_dice1)(0)'high))) = '1'))
                                              or --draw dice 2
-                                             ((to_integer(unsigned(w_Col_Count)) - 320 > -1 and
+                                             ((to_integer(unsigned(w_Col_Count)) - ((g_ACTIVE_COLS/2) + (c_medium_dicemap(w_dice1)(0)'high)) > -1 and
                                              to_integer(unsigned(w_Row_Count)) - 150 > -1 and
-                                             to_integer(unsigned(w_Col_Count)) - 320 < c_small_dicemap(w_dice2)(0)'high + 1 and
-                                             to_integer(unsigned(w_Row_Count)) - 150 < c_small_dicemap(w_dice2)'high + 1) and
-                                             (c_small_dicemap(w_dice2)(to_integer(unsigned(w_Row_Count)) - 150)(to_integer(unsigned(w_Col_Count)) - 320) = '1'))
+                                             to_integer(unsigned(w_Col_Count)) - ((g_ACTIVE_COLS/2) + (c_medium_dicemap(w_dice1)(0)'high)) < c_medium_dicemap(w_dice2)(0)'high + 1 and
+                                             to_integer(unsigned(w_Row_Count)) - 150 < c_medium_dicemap(w_dice2)'high + 1) and
+                                             (c_medium_dicemap(w_dice2)(to_integer(unsigned(w_Row_Count)) - 150)(to_integer(unsigned(w_Col_Count)) - ((g_ACTIVE_COLS/2) + (c_medium_dicemap(w_dice1)(0)'high))) = '1'))
                                         )
                                         else
                                            '0';
@@ -342,7 +395,7 @@ begin
 
     --output draw signal...prints the pixel if any of the modules are active high at this x,y position
     --comment out if using the splash screen
-    w_Draw_Any <= w_draw_dice or w_draw_text1 or w_draw_text2 or w_draw_score or w_draw_text3;      
+    --w_Draw_Any <= w_draw_dice or w_draw_text1 or w_draw_text2 or w_draw_score or w_draw_text3 or w_draw_wallet or w_draw_text4;      
 
 
   

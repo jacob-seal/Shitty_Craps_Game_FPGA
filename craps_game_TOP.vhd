@@ -7,11 +7,11 @@
 --
 --********************************************************************************
 --general notes:
---This is a craps game simulation for the nandland GoBoard using a FSM to   	
+--This is a craps game simulation for the  Digilent NEXYS 4 using a FSM to   	
 --      control the flow of the game. The title is "Shitty Craps"
 --VGA monitor is used as an output device. 
---Bets(integers 1 thru 9 are allowed) are entered VIA the keyboard by UART
---Pressing switch 4 triggers a new random value between 1 and 6 for each dice. 
+--Bets(integers 1 thru 9 are allowed) are entered VIA the PMOD keypad
+--Pressing the middle button triggers a new random value between 1 and 6 for each dice. 
 --Both values are output to VGA monitor with dice graphics.
 --The values of the dice are added together to determine the next move. 
 --If the roll is 7 or 11 the player wins. 
@@ -19,29 +19,12 @@
 --If the roll is 4,5,6,8,9,10 these are "point numbers." The point numbers mode 
 --	    is entered at this time. 
 --The player continues to roll until they hit their point number in which case 
---	    they win, or until they hit 7 or 11, in which case they lose. It is just 
+--	    they win, or until they hit 7, in which case they lose. It is just 
 --	    like a real Craps table in a casino, but without the drunk douchebags 
 --      who are stupid enough to bet their actual money on this. 
 --
---I have also designed a splash screen and planned to enable a betting system
---      but my FPGA is totally maxed out already just with what I have. The bitmap
---      can be found in the file bitmaps_pkg.vhd. 
-
---Currently bets are accepted over UART but nothing more is done with bets other 
---      than to register the bet value. I am using 159/160 PLB on the board and 
---      16/16 BRAMS. So I am totally out of room to continue.
---
---The code is here to display a small splash screen before the game starts. This 
---      code is fully commented out so I could build a playabe game on the GoBoard.
---      To Display it, simply uncomment anything to do with the Splash screen in the 
---      TOP and VGA_Gen modules. Increase r_gamestate of each state in the FSM 
---      by 1. The splash screen needs to be state 0.
---
---Further development of this program is planned for the near future when I can
---      upgrade to a larger developement platform.
---
 --INPUTS
---i_Switch_4 - input from Switch 4 on the nandland GoBoard
+--i_BTN - input from Switch 4 on the nandland GoBoard
 --i_Clk - 25 MHz clock from the oscillator on the nandland GoBoard
 --
 --i_UART_RX - input from UART interface with the PC. accepts bet value input
@@ -68,19 +51,30 @@ use ieee.numeric_std.all;
 
 library work;
 use work.craps_types_pkg.all;
+use work.my_useful_utils_pkg.all;
 
 
 entity Shitty_Craps is
 port (
 		
-		--inputs
-		--push button to trigger r_random number
-		i_Switch_4 		: 	in std_logic;									
-		--25Mhz clock
+		--push button to trigger dice roll
+		i_BTN 		: 	in std_logic;									
+		
+        --100Mhz clock
 		i_Clk			:	in std_logic;	
+        
+        --IO for the PMOD interface
+        --1-4 for columns
+        --7-10 for rows
+        io_PMOD_1 : inout std_logic;
+        io_PMOD_2 : inout std_logic;
+        io_PMOD_3 : inout std_logic;
+        io_PMOD_4 : inout std_logic;
 
-        --uart input
-	    i_UART_RX : in std_logic;								 
+        io_PMOD_7 : inout std_logic;
+        io_PMOD_8 : inout std_logic;
+        io_PMOD_9 : inout std_logic;
+        io_PMOD_10 : inout std_logic;								 
 		
 		--VGA outputs
         o_VGA_HSync : out std_logic;
@@ -88,21 +82,22 @@ port (
         o_VGA_Red_0 : out std_logic;
         o_VGA_Red_1 : out std_logic;
         o_VGA_Red_2 : out std_logic;
+        o_VGA_Red_3 : out std_logic;
         o_VGA_Grn_0 : out std_logic;
         o_VGA_Grn_1 : out std_logic;
         o_VGA_Grn_2 : out std_logic;
+        o_VGA_Grn_3 : out std_logic;
         o_VGA_Blu_0 : out std_logic;
         o_VGA_Blu_1 : out std_logic;
-        o_VGA_Blu_2 : out std_logic
-        
-        
-		);
+        o_VGA_Blu_2 : out std_logic;
+        o_VGA_Blu_3 : out std_logic
+        );
 end Shitty_Craps;
 
 architecture Behavioral of Shitty_Craps is
 	
 	-- VGA Constants to set Frame Size
-    constant c_VIDEO_WIDTH : integer := 3;
+    constant c_VIDEO_WIDTH : integer := 4;
     constant c_TOTAL_COLS  : integer := 800;
     constant c_TOTAL_ROWS  : integer := 525;
     constant c_ACTIVE_COLS : integer := 640;
@@ -124,70 +119,109 @@ architecture Behavioral of Shitty_Craps is
     signal w_Grn_Video_TP : std_logic_vector(c_VIDEO_WIDTH-1 downto 0);
     signal w_Blu_Video_TP : std_logic_vector(c_VIDEO_WIDTH-1 downto 0);
 
-    --UART signals for rx
+    --data valid flag from keypad
     signal w_RX_DV : std_logic;
-	signal w_RX_BYTE : std_logic_vector(7 downto 0);
+	
 
-    --Stores the integer value of the bet to send to the VGA_gen module
+    --Stores the integer value of the current bet to send to the VGA_gen module
     signal w_bet : integer range 0 to 9;
+    signal r_bet : integer range 0 to 9;
+    
+    --rolling total cash
+    signal w_wallet : integer range 0 to 99 := 25;
 
 	--SWITCH 4 SIGNALS
-	signal r_Switch_4 	:std_logic := '0';
-	signal w_Switch_4 	:std_logic;
+	signal r_BTN 	:std_logic := '0';
+	signal w_BTN 	:std_logic;
 
-    --flag to indicate switch 4 has been pressed
+    --flag to indicate middle button has been pressed
 	signal r_button_pressed : std_logic := '0';	
 	
 	--holds the returned random numbers for each dice 
-	signal w_int_dice_1 : integer range 1 to 6 := 1; --dice 1
-	signal w_int_dice_2 : integer range 1 to 6 := 1; --dice 2
+	signal w_int_dice_1 : integer range 0 to 6 := 0; --dice 1
+	signal w_int_dice_2 : integer range 0 to 6 := 0; --dice 2
 
 	--clk divider factors for each dice
 	--dice 2 runs 3 times slower than dice 1
 	constant c_clk_divider_dice_1 : integer := 1;	--1 = no clock division
 	constant c_clk_divider_dice_2 : integer := 3;
 
-    --*********use this declaration to include the flash screen
+    
     --FSM states that control the game
-	-- type t_FSM_Main is (s_Splash, s_Idle, s_Bets, s_Roll, s_Tally, s_Win, s_Lose,
-    --                  s_Point_Numbers);
-	-- signal r_FSM_Main : t_FSM_Main := s_Splash;
-
-    --FSM states that control the game
-	type t_FSM_Main is (s_Idle, s_Bets, s_Roll, s_Tally, s_Win, s_Lose,
+	type t_FSM_Main is (s_Splash, s_Idle, s_Bets, s_Roll, s_Tally, s_Win, s_Lose,
                      s_Point_Numbers);
-	signal r_FSM_Main : t_FSM_Main := s_Idle;
+	signal r_FSM_Main : t_FSM_Main := s_Splash;
 
     --Signals used in the FSM
     --stores the value of the point_flag to send to the VGA_gen module
     signal w_point_flag : std_logic := '0';
     --sends the FSM state to the VGA_Gen module
     signal r_gamestate : integer range 0 to 6 := 0;
+    
+    
+    --divided clock for external modules and VGA sync
+    signal r_Clk_25MHz : std_logic := '0';
+
+    --output from keypad decoder
+    signal w_decoded : std_logic_vector(3 downto 0);
 	
 	
 	
 begin
-	--************************************************************************************
-    --UART
-    --************************************************************************************
-
-	--instantiate UART module to accept terminal input
-	UART_RX : entity work.UART_RX 
-	generic map(
-        g_CLKS_PER_BIT => 217)     --25000000 / 115,200
-    port map(
-        i_Clk => i_Clk,
-        i_RX_Serial => i_UART_RX,
-        o_RX_DV => w_RX_DV,
-        o_RX_Byte => w_RX_BYTE
-    );
 	
-    --convert UART output to Integer
-    w_bet <= to_integer(unsigned(w_RX_BYTE));
+
+    --accept input from the PMOD 16 key pad
+    keypad_wrapper_inst : entity work.Keypad_Wrapper
+        port map(
+                    --clock input 100 MHz
+                    i_Clk   => i_Clk,
+                    
+                    --IO for the rows and columns(PMOD at top level)
+                    i_ROW_4 => io_PMOD_7,
+                    i_ROW_3 => io_PMOD_8,
+                    i_ROW_2 => io_PMOD_9,
+                    i_ROW_1 => io_PMOD_10,
+                    
+                    o_COL_4 => io_PMOD_1,
+                    o_COL_3 => io_PMOD_2,
+                    o_COL_2 => io_PMOD_3,
+                    o_COL_1 => io_PMOD_4,
+                    --decoded output
+                    o_Decoded => w_decoded	
+                );   
+	
+    --convert keypad output to Integer
+    w_bet <= to_integer(unsigned(w_decoded));
+
+    --set the DV flag to 1 when new info entered on the keypad
+    data_flag_set : process(r_Clk_25MHz) is
+    begin
+        if rising_edge(r_Clk_25MHz) then
+            r_bet <= w_bet;
+                if w_bet /= r_bet then
+                    w_RX_DV <= '1';
+                else 
+                    w_RX_DV <= '0';    
+                end if;
+        end if;
+    --r_bet <= 0;
+    end process;
 
     --------------------------------------------------------------------------------------
     --End UART
     --------------------------------------------------------------------------------------
+
+    --clock divider for VGA
+    --clock divider
+    clock_divider_25MHz: entity work.clock_div_pow2
+        port map   (
+                    i_clk  => i_Clk,
+                    i_rst  => '1',
+                    o_clk_div2 => open,
+                    o_clk_div4  => r_Clk_25MHz,
+                    o_clk_div8  => open,
+                    o_clk_div16 => open
+                    );
 	
     --************************************************************************************
     --Switches
@@ -199,16 +233,16 @@ begin
             DEBOUNCE_LIMIT => 250000                            --10ms at 25MHz
     )
     port map(
-		i_Clk 	 => i_Clk,
-		i_switch => i_Switch_4,
-		o_switch => w_Switch_4);
+		i_Clk 	 => r_Clk_25MHz,
+		i_switch => i_BTN,
+		o_switch => w_BTN);
 
 	--set button pressed flag on rising edge of switch 4
-	register_button : process(i_Clk) is
+	register_button : process(r_Clk_25MHz) is
 	begin
-		if rising_edge(i_Clk) then
-			r_Switch_4 <= w_Switch_4; 				            --create a registered version of the input(previous value)
-				if w_Switch_4 = '1'and r_Switch_4 = '0' then 	--if rising edge(button PRESS)
+		if rising_edge(r_Clk_25MHz) then
+			r_BTN <= w_BTN; 				            --create a registered version of the input(previous value)
+				if w_BTN = '1'and r_BTN = '0' then 	--if rising edge(button PRESS)
 					r_button_pressed <= '1';					--button has been pressed
 				else 
 					r_button_pressed <= '0';
@@ -230,7 +264,7 @@ begin
 		clk_divider => c_clk_divider_dice_1
 		)
 	port map(
-		i_Clk 	 => i_Clk,
+		i_Clk 	 => r_Clk_25MHz,
 		i_switch => r_button_pressed,
 		o_rand => w_int_dice_1);
 
@@ -242,7 +276,7 @@ begin
 		clk_divider => c_clk_divider_dice_2
 		)
 	port map(
-		i_Clk 	 => i_Clk,
+		i_Clk 	 => r_Clk_25MHz,
 		i_switch => r_button_pressed,
 		o_rand => w_int_dice_2);
 
@@ -264,7 +298,7 @@ begin
         g_ACTIVE_ROWS => c_ACTIVE_ROWS
         )
     port map (
-        i_Clk       => i_Clk,
+        i_Clk       => r_Clk_25MHz,
         o_HSync     => w_HSync_VGA,
         o_VSync     => w_VSync_VGA,
         o_Col_Count => open,
@@ -282,11 +316,12 @@ begin
       )
     port map (
         --inputs
-        i_Clk       => i_Clk,
+        i_Clk       => r_Clk_25MHz,
         i_dice1     => w_int_dice_1,
         i_dice2     => w_int_dice_2,
         i_state => r_gamestate,
         i_bet => w_bet,
+        i_wallet => w_wallet,
         i_point => w_point_flag,
         i_HSync     => w_HSync_VGA,
         i_VSync     => w_VSync_VGA,
@@ -309,7 +344,7 @@ begin
       )
     port map (
         --inputs
-        i_Clk       => i_Clk,
+        i_Clk       => r_Clk_25MHz,
         i_HSync     => w_HSync_VGA,
         i_VSync     => w_VSync_VGA,
         i_Red_Video => w_Red_Video_TP,
@@ -330,14 +365,17 @@ begin
     o_VGA_Red_0 <= w_Red_Video_Porch(0);
     o_VGA_Red_1 <= w_Red_Video_Porch(1);
     o_VGA_Red_2 <= w_Red_Video_Porch(2);
+    o_VGA_Red_3 <= w_Red_Video_Porch(3);
    
     o_VGA_Grn_0 <= w_Grn_Video_Porch(0);
     o_VGA_Grn_1 <= w_Grn_Video_Porch(1);
     o_VGA_Grn_2 <= w_Grn_Video_Porch(2);
+    o_VGA_Grn_3 <= w_Grn_Video_Porch(3);
  
     o_VGA_Blu_0 <= w_Blu_Video_Porch(0);
     o_VGA_Blu_1 <= w_Blu_Video_Porch(1);
     o_VGA_Blu_2 <= w_Blu_Video_Porch(2);
+    o_VGA_Blu_3 <= w_Blu_Video_Porch(3);
 
     --------------------------------------------------------------------------------------
     --End VGA PARTS 
@@ -348,7 +386,7 @@ begin
     --Start FSM. FSM process runs the entire game
     --************************************************************************************	
 	
-	FSM : process (i_Clk)
+	FSM : process (r_Clk_25MHz)
 	--create variable to hold the addition of the 2 dice
 	variable r_result	: integer range 0 to 12 := 0;
 	--to register the current result and compare it against the next
@@ -357,29 +395,30 @@ begin
 	variable point_flag : std_logic := '0';
 	--counter to wait 2 seconds before changing states
 	variable r_2second_counter : integer range 0 to 50000000 := 0;
-    --variable r_splash_counter : integer range 0 to 150000000 := 0; --6 seconds max
+    variable r_splash_counter : integer range 0 to 150000000 := 0; --6 seconds max
+    variable r_wallet : integer range 0 to 99;
 	begin
-        if rising_edge(i_Clk) then
+        if rising_edge(r_Clk_25MHz) then
             
             case r_FSM_Main is
 
-                --when s_Splash =>  --uncomment this state to use the splash screen
-                --r_gamestate <= 0;
+                when s_Splash =>  --uncomment this state to use the splash screen
+                r_gamestate <= 0;
 
-                -- -- wait for the counter flag(6 seconds) then go to idle state
-                --     if r_splash_counter = 150000000 - 1 then
-                --         r_splash_counter := 0;
-                        --r_FSM_Main <= s_Idle;
-                    -- else
-                    --     r_splash_counter := r_splash_counter + 1;
-                    --     r_FSM_Main <= s_Splash;
-                    -- end if;	
+                -- wait for the counter flag(6 seconds) then go to idle state
+                    if r_splash_counter = 150000000 - 1 then
+                        r_splash_counter := 0;
+                        r_FSM_Main <= s_Idle;
+                    else
+                        r_splash_counter := r_splash_counter + 1;
+                        r_FSM_Main <= s_Splash;
+                    end if;	
 
                 --When idle the System is waiting for a bet to be entered by UART
                 when s_Idle =>
                     
                     if point_flag = '0' then        --normal round. Accept bet and move to S_Bets
-                        r_gamestate <= 0;  
+                        r_gamestate <= 1;  
                             --when bet placed go to next state
                         if w_RX_DV = '1' then
                             r_FSM_Main <= s_Bets;
@@ -393,12 +432,14 @@ begin
 
                 --Bet has been entered on the UART. Wait 2 seconds then go to S_Roll
                 when s_Bets =>
-                    r_gamestate <= 1;
+                    r_gamestate <= 2;
+                    
 
                     -- wait for the counter flag(2 seconds) then go to roll state
                     if r_2second_counter = 50000000 - 1 then
                         r_2second_counter := 0;
                         r_FSM_Main <= s_Roll;
+                        r_wallet := r_wallet - w_bet;
                     else
                         r_2second_counter := r_2second_counter + 1;
                         r_FSM_Main <= s_Bets;
@@ -406,7 +447,7 @@ begin
                 
                 --Time to roll the dice by pressing Switch 4
                 when s_Roll =>
-                    r_gamestate <= 2;    
+                    r_gamestate <= 3;    
 
                     if r_button_pressed = '1' then  --when button pressed go to next state
                         r_FSM_Main <= s_Tally;
@@ -418,7 +459,7 @@ begin
                 when s_Tally =>	
                     --add the 2 dice rolls
                     r_result := w_int_dice_1 + w_int_dice_2;  
-                    r_gamestate <= 3;
+                    r_gamestate <= 4;
 
                     -- wait for the counter(2 seconds) then determine next state
                     -- next state is always S_Win, S_Lose, or S_Point_Numbers
@@ -449,11 +490,13 @@ begin
                         
                 -- you win baby!! Making that paper! Time to hit the buffet.       
                 when s_Win =>
-                    r_gamestate <= 4;
+                    r_gamestate <= 5;
+                    
                     
                     -- wait for the counter(2 seconds) then go back to idle to play again
                     if r_2second_counter = 50000000 - 1 then
                         r_2second_counter := 0;
+                        r_wallet := r_wallet + 2*w_bet;
                         r_FSM_Main <= s_Idle;
                     else
                         r_2second_counter := r_2second_counter + 1;
@@ -463,12 +506,14 @@ begin
 
                 -- you lose. Life is hard. Suck it up and seek some counseling. 
                 when s_Lose =>
-                    r_gamestate <= 5;  
+                    r_gamestate <= 6;  
 
                     -- wait for the counter (2 seconds) then go back to idle to play again
                     if r_2second_counter = 50000000 - 1 then
                         r_2second_counter := 0;
+                        r_wallet := r_wallet - w_bet;
                         r_FSM_Main <= s_Idle;
+                        
                     else
                         r_2second_counter := r_2second_counter + 1;
                         r_FSM_Main <= s_Lose;
@@ -500,6 +545,7 @@ begin
 
             end case;
         end if;
+    w_wallet <= r_wallet;    
 	
     end process FSM;
     --------------------------------------------------------------------------------------
