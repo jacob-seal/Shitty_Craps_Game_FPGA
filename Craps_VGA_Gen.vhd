@@ -112,7 +112,7 @@ architecture RTL of Craps_VGA_Gen is
     signal w_draw_text3 : std_logic;
     signal w_draw_text4 : std_logic;
     signal w_draw_wallet : std_logic;
-    signal w_Draw_Splash : std_logic;                     --uncomment to use splash screen
+    signal w_Draw_Splash : std_logic;                     
     --connects output of all modules that draw to VGA
     signal w_Draw_Any       : std_logic;
     --unsigned counters (always positive) for row and column
@@ -169,7 +169,7 @@ begin
                     w_text3 <= c_gamestate_stringmap(9);
                     w_text4 <= c_gamestate_stringmap(11);
                     w_wallet_str <= int_to_str_width_2(w_wallet);
-                    w_Draw_Any <= w_draw_text1 or w_draw_text2 or w_draw_wallet or w_draw_text4;                                                       --uncomment to use splash screen
+                    w_Draw_Any <= w_draw_text1 or w_draw_text2 or w_draw_wallet or w_draw_text4;                                                       
                     
                 when 2 => --bets
                     w_text1 <= c_gamestate_stringmap(8);
@@ -178,11 +178,11 @@ begin
                     w_text3 <= c_gamestate_stringmap(9);
                     w_text4 <= c_gamestate_stringmap(11);
                     w_wallet_str <= int_to_str_width_2(w_wallet);
-                    w_Draw_Any <= w_draw_text1 or w_draw_text2 or w_draw_score or w_draw_wallet or w_draw_text4;                                       --uncomment to use splash screen
+                    w_Draw_Any <= w_draw_text1 or w_draw_text2 or w_draw_score or w_draw_wallet or w_draw_text4;                                       
                     
                 when 3 => --roll
                     w_text2 <= c_gamestate_stringmap(0);
-                    if w_point = '0' then
+                    if w_point = '0' then   --normal mode...no point number has been rolled
                         w_text1 <= c_gamestate_stringmap(4);
                         w_score <= "  ";
                         w_text3 <= c_gamestate_stringmap(9);
@@ -190,15 +190,25 @@ begin
                         w_wallet_str <= int_to_str_width_2(w_wallet);
                         w_text4 <= c_gamestate_stringmap(11);
                         w_Draw_Any <= w_draw_text1 or w_draw_dice or w_draw_wallet or w_draw_text4 or w_draw_text2;
-                    else
+                    else    --entering point numbers mode
                         w_text1 <= c_gamestate_stringmap(10);
                         w_score <= r_string_3;
                         w_text3 <= c_gamestate_stringmap(3);
                         w_wallet_str <= int_to_str_width_2(w_wallet);
                         w_text4 <= c_gamestate_stringmap(11);
-                        w_Draw_Any <= w_draw_dice or w_draw_text1 or w_draw_text2 or w_draw_score or w_draw_text3 or w_draw_wallet or w_draw_text4;    --uncomment to use splash screen
+                        w_Draw_Any <= w_draw_dice or w_draw_text1 or w_draw_text2 or w_draw_score or w_draw_text3 or w_draw_wallet or w_draw_text4;    
                     end if;
-                            
+            
+
+                -- if r_Draw_Red_Card = '1' then
+                --     o_Red_Video <= (others => '1');
+                --     o_Blu_Video <= (others => '0');
+                --     o_Grn_Video <= (others => '0');
+                -- elsif w_Draw_Any = '1' then
+                --     o_Red_Video <= (others => '1');
+                --     o_Blu_Video <= (others => '1');
+                --     o_Grn_Video <= (others => '1');    
+                -- end if;       
                     
                 when 4 => --tally
                         w_text1 <= c_gamestate_stringmap(9);
@@ -207,7 +217,7 @@ begin
                         w_text3 <= c_gamestate_stringmap(9);
                         w_wallet_str <= int_to_str_width_2(w_wallet);
                         w_text4 <= c_gamestate_stringmap(11);
-                        w_Draw_Any <= w_draw_dice or w_draw_text2 or w_draw_score or w_draw_wallet or w_draw_text4;                                    --uncomment to use splash screen
+                        w_Draw_Any <= w_draw_dice or w_draw_text2 or w_draw_score or w_draw_wallet or w_draw_text4;                                    
                     
                 when 5 => --win
                     w_text1 <= c_gamestate_stringmap(9);
@@ -216,7 +226,7 @@ begin
                     w_text3 <= c_gamestate_stringmap(2);
                     w_wallet_str <= int_to_str_width_2(w_wallet);
                     w_text4 <= c_gamestate_stringmap(11);
-                    w_Draw_Any <= w_draw_dice or w_draw_text2 or w_draw_score or w_draw_text3 or w_draw_wallet or w_draw_text4;                        --uncomment to use splash screen
+                    w_Draw_Any <= w_draw_dice or w_draw_text2 or w_draw_score or w_draw_text3 or w_draw_wallet or w_draw_text4;                        
                     
                 when 6 => --lose
                     w_text1 <= c_gamestate_stringmap(9);
@@ -225,7 +235,7 @@ begin
                     w_text3 <= c_gamestate_stringmap(1);
                     w_wallet_str <= int_to_str_width_2(w_wallet);
                     w_text4 <= c_gamestate_stringmap(11);
-                    w_Draw_Any <= w_draw_dice or w_draw_text2 or w_draw_score or w_draw_text3 or w_draw_wallet or w_draw_text4;                        --uncomment to use splash screen
+                    w_Draw_Any <= w_draw_dice or w_draw_text2 or w_draw_score or w_draw_text3 or w_draw_wallet or w_draw_text4;                        
 
                 when others =>
                     null;
@@ -377,18 +387,7 @@ w_draw_dice <= '1' when                 (--draw dice 1
                                         )
                                         else
                                            '0';
-    --draws the splash screen. FPGA cant handle it. commented out so I can make a working game.
-    --with new FSM this code is likely not needed
---  w_Draw_Splash <= '1' when                 (
---                                             ((to_integer(unsigned(w_Col_Count)) - 262 > -1 and
---                                             to_integer(unsigned(w_Row_Count)) - 200 > -1 and
---                                             to_integer(unsigned(w_Col_Count)) - 262 < dual_dice_bitmap(0)'high + 1 and
---                                             to_integer(unsigned(w_Row_Count)) - 200 < dual_dice_bitmap'high + 1) and
---                                             (dual_dice_bitmap(to_integer(unsigned(w_Row_Count)) - 200)(to_integer(unsigned(w_Col_Count)) - 262) = '1'))
-                                             
---                                         )
---                                         else
---                                            '0';
+    
 
 
 
