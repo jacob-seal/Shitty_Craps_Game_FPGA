@@ -40,7 +40,7 @@ package craps_types_pkg is
             ("Awaiting bets...                                                    "), --5
             ("You bet:             $                                              "), --6
             ("You Rolled :                                                        "), --7
-            ("Enter your bet on the Keyboard.                                     "), --8
+            ("Enter your bet on the Keypad.                                       "), --8
             ("                                                                    "), --9 when nothing should be displayed. 
             ("You have rolled a point number. Please roll again to continue.      "),  --10
             ("Current bank:     $                                                 ") --11
@@ -69,20 +69,41 @@ package craps_types_pkg is
             medium_dice_bitmap_6
         );
 
-  
+  --x and y position arrays for red chip
+    type t_x_pos_chipmap is array (0 to 10) of integer;
+        constant c_x_pos_chipmap : t_x_pos_chipmap :=
+        (
+           (80),--0                 --0 
+           (80),--0                 --1 
+           (80),--0                 --2 
+           (80),--0                 --3 
+           (155),--4                --4 
+           (238),--5                --5 
+           (320),--6                --6 
+           (80),--7 doesnt matter   --7 
+           (402),--8                --8 
+           (485),--9                --9 
+            (568)--10               --10
+        );
+
+    -- type t_y_pos_chipmap is array (0 to 10) of integer;
+    --     constant c_y_pos_chipmap : t_y_pos_chipmap :=
+    --     (
+    --         (23),
+    --         (23),
+    --         (23),
+    --         (23),
+    --         (23),
+    --         (23),
+    --         (23),
+    --         (23),
+    --         (23),
+    --         (23),
+    --         (23)
+    --     );    
 
   
 
-  
-
-
-
-
-  
-
-  -----------------------------------------------------------------------------
-  -- Numeric bit patterns for output to VGA for scorekeeping
-  -----------------------------------------------------------------------------
   
 
 

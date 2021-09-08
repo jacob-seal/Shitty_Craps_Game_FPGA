@@ -113,6 +113,9 @@ architecture RTL of Craps_VGA_Gen is
     signal w_draw_text4 : std_logic;
     signal w_draw_wallet : std_logic;
     signal w_Draw_Splash : std_logic;                     
+    signal w_draw_table : std_logic;
+    signal w_draw_chip  : std_logic;
+    
     --connects output of all modules that draw to VGA
     signal w_Draw_Any       : std_logic;
     --unsigned counters (always positive) for row and column
@@ -127,6 +130,10 @@ architecture RTL of Craps_VGA_Gen is
     signal w_text3 : string (1 to c_gamestate_stringmap(0)'high);
     signal w_text4 : string (1 to c_gamestate_stringmap(0)'high);
     signal w_wallet_str : string(1 to 2); --wallet...up to 99
+
+    signal w_x_pos_chip : integer range 0 to 2**w_Col_Count'length;
+    signal w_y_pos_chip : integer range 0 to 2**w_Row_Count'length;
+    signal r_chip_array_pointer : integer range 0 to 10 := 0;
 
 
 begin
@@ -143,10 +150,11 @@ begin
     --game state input value from the TOP module. 
     string_output_parser : process(i_Clk) is 
     variable r_string_3 : string(1 to 2);
+    variable v_chip_array_pointer : integer range 0 to 12;
     begin
         if rising_edge(i_Clk) then 
             case w_game_state is
-                when 0 => --splash screen --******uncomment to use splash screen
+                when 0 => --splash screen 
                     w_text1 <= c_gamestate_stringmap(9);
                     w_text2 <= c_gamestate_stringmap(9);
                     w_score <= "  ";
@@ -162,14 +170,15 @@ begin
                                             w_Draw_Any <= '0'; 
 
                      end if;                       
-                when 1 => --idle
+                when 1 => --idle waiting for bets
                     w_text1 <= c_gamestate_stringmap(8);
                     w_text2 <= c_gamestate_stringmap(5);
                     w_score <= "  ";
                     w_text3 <= c_gamestate_stringmap(9);
                     w_text4 <= c_gamestate_stringmap(11);
                     w_wallet_str <= int_to_str_width_2(w_wallet);
-                    w_Draw_Any <= w_draw_text1 or w_draw_text2 or w_draw_wallet or w_draw_text4;                                                       
+                    w_Draw_Any <= w_draw_text1 or w_draw_text2 or w_draw_wallet or w_draw_text4;
+                           
                     
                 when 2 => --bets
                     w_text1 <= c_gamestate_stringmap(8);
@@ -178,37 +187,33 @@ begin
                     w_text3 <= c_gamestate_stringmap(9);
                     w_text4 <= c_gamestate_stringmap(11);
                     w_wallet_str <= int_to_str_width_2(w_wallet);
-                    w_Draw_Any <= w_draw_text1 or w_draw_text2 or w_draw_score or w_draw_wallet or w_draw_text4;                                       
+                    w_Draw_Any <= w_draw_text1 or w_draw_text2 or w_draw_score or w_draw_wallet or w_draw_text4;
+                        
                     
                 when 3 => --roll
                     w_text2 <= c_gamestate_stringmap(0);
-                    if w_point = '0' then   --normal mode...no point number has been rolled
+                    if w_point = '0' then
                         w_text1 <= c_gamestate_stringmap(4);
                         w_score <= "  ";
                         w_text3 <= c_gamestate_stringmap(9);
                         r_string_3 := int_to_str_width_2(w_dice1 + w_dice2);
+                        v_chip_array_pointer := w_dice1 + w_dice2;
                         w_wallet_str <= int_to_str_width_2(w_wallet);
                         w_text4 <= c_gamestate_stringmap(11);
                         w_Draw_Any <= w_draw_text1 or w_draw_dice or w_draw_wallet or w_draw_text4 or w_draw_text2;
-                    else    --entering point numbers mode
+                        r_chip_array_pointer <= 0;
+                    else
                         w_text1 <= c_gamestate_stringmap(10);
-                        w_score <= r_string_3;
+                        --w_score <= r_string_3;
+                        w_score <= "  ";
                         w_text3 <= c_gamestate_stringmap(3);
                         w_wallet_str <= int_to_str_width_2(w_wallet);
                         w_text4 <= c_gamestate_stringmap(11);
-                        w_Draw_Any <= w_draw_dice or w_draw_text1 or w_draw_text2 or w_draw_score or w_draw_text3 or w_draw_wallet or w_draw_text4;    
+                        r_chip_array_pointer <= v_chip_array_pointer;
+                        w_Draw_Any <= w_draw_dice or w_draw_text1 or w_draw_text2 or w_draw_score or w_draw_text3 or w_draw_wallet or w_draw_text4; 
+                        
                     end if;
-            
-
-                -- if r_Draw_Red_Card = '1' then
-                --     o_Red_Video <= (others => '1');
-                --     o_Blu_Video <= (others => '0');
-                --     o_Grn_Video <= (others => '0');
-                -- elsif w_Draw_Any = '1' then
-                --     o_Red_Video <= (others => '1');
-                --     o_Blu_Video <= (others => '1');
-                --     o_Grn_Video <= (others => '1');    
-                -- end if;       
+                            
                     
                 when 4 => --tally
                         w_text1 <= c_gamestate_stringmap(9);
@@ -217,7 +222,8 @@ begin
                         w_text3 <= c_gamestate_stringmap(9);
                         w_wallet_str <= int_to_str_width_2(w_wallet);
                         w_text4 <= c_gamestate_stringmap(11);
-                        w_Draw_Any <= w_draw_dice or w_draw_text2 or w_draw_score or w_draw_wallet or w_draw_text4;                                    
+                        w_Draw_Any <= w_draw_dice or w_draw_text2 or w_draw_score or w_draw_wallet or w_draw_text4;
+                        
                     
                 when 5 => --win
                     w_text1 <= c_gamestate_stringmap(9);
@@ -226,7 +232,8 @@ begin
                     w_text3 <= c_gamestate_stringmap(2);
                     w_wallet_str <= int_to_str_width_2(w_wallet);
                     w_text4 <= c_gamestate_stringmap(11);
-                    w_Draw_Any <= w_draw_dice or w_draw_text2 or w_draw_score or w_draw_text3 or w_draw_wallet or w_draw_text4;                        
+                    r_chip_array_pointer <= 0;
+                    w_Draw_Any <= w_draw_dice or w_draw_text2 or w_draw_score or w_draw_text3 or w_draw_wallet or w_draw_text4;
                     
                 when 6 => --lose
                     w_text1 <= c_gamestate_stringmap(9);
@@ -235,7 +242,9 @@ begin
                     w_text3 <= c_gamestate_stringmap(1);
                     w_wallet_str <= int_to_str_width_2(w_wallet);
                     w_text4 <= c_gamestate_stringmap(11);
-                    w_Draw_Any <= w_draw_dice or w_draw_text2 or w_draw_score or w_draw_text3 or w_draw_wallet or w_draw_text4;                        
+                    r_chip_array_pointer <= 0;
+                    w_Draw_Any <= w_draw_dice or w_draw_text2 or w_draw_score or w_draw_text3 or w_draw_wallet or w_draw_text4;
+                    
 
                 when others =>
                     null;
@@ -278,8 +287,8 @@ begin
             port map(
                 clk => i_Clk,
                 displayText => w_text1,
-                x_pos => 50,
-                y_pos => 50,
+                x_pos => 72,
+                y_pos => 230,
                 horzCoord => to_integer(unsigned(w_Col_Count)),
                 vertCoord => to_integer(unsigned(w_Row_Count)),
                 pixel => w_draw_text1 -- result
@@ -294,7 +303,7 @@ begin
                 clk => i_Clk,
                 displayText => w_text2,
                 x_pos => 50,
-                y_pos => 250,
+                y_pos => 338,
                 horzCoord => to_integer(unsigned(w_Col_Count)),
                 vertCoord => to_integer(unsigned(w_Row_Count)),
                 pixel => w_draw_text2 -- result
@@ -309,7 +318,7 @@ begin
                 clk => i_Clk,
                 displayText => w_score,
                 x_pos => 200,
-                y_pos => 250,
+                y_pos => 338,
                 horzCoord => to_integer(unsigned(w_Col_Count)),
                 vertCoord => to_integer(unsigned(w_Row_Count)),
                 pixel => w_draw_score -- result
@@ -325,7 +334,7 @@ begin
         	displayText => w_text3,
         	--position => (50, 50), -- text position (top left)
             x_pos => 50,
-            y_pos => 300,
+            y_pos => 375,
         	horzCoord => to_integer(unsigned(w_Col_Count)),
         	vertCoord => to_integer(unsigned(w_Row_Count)),
         	pixel => w_draw_text3 -- result
@@ -340,7 +349,7 @@ begin
                 clk => i_Clk,
                 displayText => w_wallet_str,
                 x_pos => 525,
-                y_pos => 250,
+                y_pos => 338,
                 horzCoord => to_integer(unsigned(w_Col_Count)),
                 vertCoord => to_integer(unsigned(w_Row_Count)),
                 pixel => w_draw_wallet -- result
@@ -356,7 +365,7 @@ begin
         	displayText => w_text4,
         	--position => (50, 50), -- text position (top left)
             x_pos => 400,
-            y_pos => 250,
+            y_pos => 338,
         	horzCoord => to_integer(unsigned(w_Col_Count)),
         	vertCoord => to_integer(unsigned(w_Row_Count)),
         	pixel => w_draw_text4 -- result
@@ -367,29 +376,84 @@ begin
   
 
   -----------------------------------------------------------------------------
-  -- writes the dice_bitmap to the screen
-  -- centered
+  -- generate the output pixel for the dice, background graphic, and the red chip
   -----------------------------------------------------------------------------
 
 
-w_draw_dice <= '1' when                 (--draw dice 1
+    w_draw_dice <= '1' when                 (--draw dice 1
                                             ((to_integer(unsigned(w_Col_Count)) - ((g_ACTIVE_COLS/2) - (2*c_medium_dicemap(w_dice1)(0)'high)) > -1 and
-                                            to_integer(unsigned(w_Row_Count)) - 150 > -1 and
+                                            to_integer(unsigned(w_Row_Count)) - 275 > -1 and
                                             to_integer(unsigned(w_Col_Count)) - ((g_ACTIVE_COLS/2) - (2*c_medium_dicemap(w_dice1)(0)'high)) < c_medium_dicemap(w_dice1)(0)'high + 1 and
-                                            to_integer(unsigned(w_Row_Count)) - 150 < c_medium_dicemap(w_dice1)'high + 1) and
-                                            (c_medium_dicemap(w_dice1)(to_integer(unsigned(w_Row_Count)) - 150)(to_integer(unsigned(w_Col_Count)) - ((g_ACTIVE_COLS/2) - (2*c_medium_dicemap(w_dice1)(0)'high))) = '1'))
+                                            to_integer(unsigned(w_Row_Count)) - 275 < c_medium_dicemap(w_dice1)'high + 1) and
+                                            (c_medium_dicemap(w_dice1)(to_integer(unsigned(w_Row_Count)) - 275)(to_integer(unsigned(w_Col_Count)) - ((g_ACTIVE_COLS/2) - (2*c_medium_dicemap(w_dice1)(0)'high))) = '1'))
                                              or --draw dice 2
                                              ((to_integer(unsigned(w_Col_Count)) - ((g_ACTIVE_COLS/2) + (c_medium_dicemap(w_dice1)(0)'high)) > -1 and
-                                             to_integer(unsigned(w_Row_Count)) - 150 > -1 and
+                                             to_integer(unsigned(w_Row_Count)) - 275 > -1 and
                                              to_integer(unsigned(w_Col_Count)) - ((g_ACTIVE_COLS/2) + (c_medium_dicemap(w_dice1)(0)'high)) < c_medium_dicemap(w_dice2)(0)'high + 1 and
-                                             to_integer(unsigned(w_Row_Count)) - 150 < c_medium_dicemap(w_dice2)'high + 1) and
-                                             (c_medium_dicemap(w_dice2)(to_integer(unsigned(w_Row_Count)) - 150)(to_integer(unsigned(w_Col_Count)) - ((g_ACTIVE_COLS/2) + (c_medium_dicemap(w_dice1)(0)'high))) = '1'))
+                                             to_integer(unsigned(w_Row_Count)) - 275 < c_medium_dicemap(w_dice2)'high + 1) and
+                                             (c_medium_dicemap(w_dice2)(to_integer(unsigned(w_Row_Count)) - 275)(to_integer(unsigned(w_Col_Count)) - ((g_ACTIVE_COLS/2) + (c_medium_dicemap(w_dice1)(0)'high))) = '1'))
                                         )
                                         else
                                            '0';
+
+    process (i_Clk, w_game_state)
+    begin
+        if rising_edge(i_Clk) then
+            if w_game_state /= 0 then
+                if  ((to_integer(unsigned(w_Col_Count)) - 0 > -1 and
+                    to_integer(unsigned(w_Row_Count)) - 0 > -1 and
+                    to_integer(unsigned(w_Col_Count)) - 0 < craps_table_bitmap(0)'high + 1 and
+                    to_integer(unsigned(w_Row_Count)) - 0 < craps_table_bitmap'high + 1) and
+                    (craps_table_bitmap(to_integer(unsigned(w_Row_Count)) - 0)(to_integer(unsigned(w_Col_Count)) - 0) = '1')) then
+                    w_draw_table <= '1';
+                    
+                else
+                    w_draw_table <= '0'; 
+                           
+                    
+                end if;
+                
+                if ((to_integer(unsigned(w_Col_Count)) - w_x_pos_chip > -1 and
+                                                        to_integer(unsigned(w_Row_Count)) - w_y_pos_chip > -1 and
+                                                        to_integer(unsigned(w_Col_Count)) - w_x_pos_chip < dot(0)'high + 1 and
+                                                        to_integer(unsigned(w_Row_Count)) - w_y_pos_chip < dot'high + 1) and
+                                                        (dot(to_integer(unsigned(w_Row_Count)) - w_y_pos_chip)(to_integer(unsigned(w_Col_Count)) - w_x_pos_chip) = '1')) then
+
+                    w_draw_chip <= '1';
+                else
+                    w_draw_chip <= '0';    
+                    
+                end if;
+
+            end if;              
+            
+        end if;
+        
+    end process;
+
+    -- w_draw_table <= '1' when                ((to_integer(unsigned(w_Col_Count)) - 0 > -1 and
+    --                                                     to_integer(unsigned(w_Row_Count)) - 0 > -1 and
+    --                                                     to_integer(unsigned(w_Col_Count)) - 0 < craps_table_bitmap(0)'high + 1 and
+    --                                                     to_integer(unsigned(w_Row_Count)) - 0 < craps_table_bitmap'high + 1) and
+    --                                                     (craps_table_bitmap(to_integer(unsigned(w_Row_Count)) - 0)(to_integer(unsigned(w_Col_Count)) - 0) = '1'))
+                                                        
+    --                                                     else 
+    --                                                         '0';
+
     
-
-
+    
+    -- w_draw_chip <= '1' when                 ((to_integer(unsigned(w_Col_Count)) - w_x_pos_chip > -1 and
+    --                                                     to_integer(unsigned(w_Row_Count)) - w_y_pos_chip > -1 and
+    --                                                     to_integer(unsigned(w_Col_Count)) - w_x_pos_chip < dot(0)'high + 1 and
+    --                                                     to_integer(unsigned(w_Row_Count)) - w_y_pos_chip < dot'high + 1) and
+    --                                                     (dot(to_integer(unsigned(w_Row_Count)) - w_y_pos_chip)(to_integer(unsigned(w_Col_Count)) - w_x_pos_chip) = '1'))
+                                                        
+    --                                                     else
+    --                                                         '0';
+                                  
+    
+    w_x_pos_chip <= c_x_pos_chipmap(r_chip_array_pointer);
+    w_y_pos_chip <= 23;  --at constant y position of 23
 
 
     --output draw signal...prints the pixel if any of the modules are active high at this x,y position
@@ -399,9 +463,34 @@ w_draw_dice <= '1' when                 (--draw dice 1
 
   
   -- Assign Color outputs, only two colors, White or Black
-  o_Red_Video <= (others => '1') when w_Draw_Any = '1' else (others => '0');
-  o_Blu_Video <= (others => '1') when w_Draw_Any = '1' else (others => '0');
-  o_Grn_Video <= (others => '1') when w_Draw_Any = '1' else (others => '0');
+  --o_Red_Video <= (others => '1') when w_Draw_Any = '1' else (others => '0');
+  --o_Blu_Video <= (others => '1') when w_Draw_Any = '1' else (others => '0');
+  --o_Grn_Video <= (others => '1') when w_Draw_Any = '1' else (others => '0');
+
+  assign_outputs_proc : process (i_Clk)
+    begin
+        if rising_edge(i_Clk) then
+            if w_draw_chip = '1' then
+                 o_Red_Video <= (others => '1');
+                 o_Grn_Video <= (others => '0');
+                 o_Blu_Video <= (others => '0');
+            elsif w_draw_table = '1' then 
+                o_Red_Video <= (others => '1');
+                o_Grn_Video <= (others => '1');
+                o_Blu_Video <= (others => '1');        
+            elsif w_Draw_Any = '1' then
+                o_Red_Video <= (others => '1');
+                o_Grn_Video <= (others => '1');
+                o_Blu_Video <= (others => '1'); 
+            else
+                o_Red_Video <= (others => '0');
+                o_Grn_Video <= (others => '0');
+                o_Blu_Video <= (others => '0');                      
+            end if;
+            
+        end if;
+        
+    end process;   
         
 
   
