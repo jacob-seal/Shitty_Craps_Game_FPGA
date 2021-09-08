@@ -9,7 +9,8 @@
 --general notes:
 --This is a craps game simulation for the  Digilent NEXYS 4 using a FSM to   	
 --      control the flow of the game. The title is "Shitty Craps"
---VGA monitor is used as an output device. 
+--VGA monitor is used as an output device and display a gaming table and all user
+--      feedback information. 
 --Bets(integers 1 thru 9 are allowed) are entered VIA the PMOD keypad
 --Pressing the middle button triggers a new random value between 1 and 6 for each dice. 
 --Both values are output to VGA monitor with dice graphics.
@@ -24,22 +25,25 @@
 --      who are stupid enough to bet their actual money on this. 
 --
 --INPUTS
---i_BTN - input from Switch 4 on the nandland GoBoard
---i_Clk - 25 MHz clock from the oscillator on the nandland GoBoard
+--i_BTN - input from the middle button on the Nexys4
+--i_Clk - 100 MHz clock from the oscillator on the Nexys4
 --
---i_UART_RX - input from UART interface with the PC. accepts bet value input
+--io_PMOD 1-10 - input from keypad on PMOD JB. accepts bet value input
 --
 -- o_VGA_HSync -- outputs for the VGA monitor connection
 -- o_VGA_VSync 
 -- o_VGA_Red_0 
 -- o_VGA_Red_1 
 -- o_VGA_Red_2 
+-- o_VGA_Red_3
 -- o_VGA_Grn_0 
 -- o_VGA_Grn_1 
 -- o_VGA_Grn_2 
+-- o_VGA_Grn_3
 -- o_VGA_Blu_0 
 -- o_VGA_Blu_1 
--- o_VGA_Blu_2 
+-- o_VGA_Blu_2
+-- o_VGA_Blu_3 
 --********************************************************************************
 ----------------------------------------------------------------------------------
 
@@ -97,78 +101,80 @@ end Shitty_Craps;
 architecture Behavioral of Shitty_Craps is
 	
 	-- VGA Constants to set Frame Size
-    constant c_VIDEO_WIDTH : integer := 4;
-    constant c_TOTAL_COLS  : integer := 800;
-    constant c_TOTAL_ROWS  : integer := 525;
-    constant c_ACTIVE_COLS : integer := 640;
-    constant c_ACTIVE_ROWS : integer := 480;
-    
-    -- Common VGA Signals
-    signal w_HSync_VGA       : std_logic;
-    signal w_VSync_VGA       : std_logic;
-    signal w_HSync_Porch     : std_logic;
-    signal w_VSync_Porch     : std_logic;
-    signal w_Red_Video_Porch : std_logic_vector(c_VIDEO_WIDTH-1 downto 0);
-    signal w_Grn_Video_Porch : std_logic_vector(c_VIDEO_WIDTH-1 downto 0);
-    signal w_Blu_Video_Porch : std_logic_vector(c_VIDEO_WIDTH-1 downto 0);
+    constant c_VIDEO_WIDTH          : integer               := 4;
+    constant c_TOTAL_COLS           : integer               := 800;
+    constant c_TOTAL_ROWS           : integer               := 525;
+    constant c_ACTIVE_COLS          : integer               := 640;
+    constant c_ACTIVE_ROWS          : integer               := 480;
+
+    -- Common VGA Signals   
+    signal w_HSync_VGA              : std_logic;
+    signal w_VSync_VGA              : std_logic;
+    signal w_HSync_Porch            : std_logic;
+    signal w_VSync_Porch            : std_logic;
+    signal w_Red_Video_Porch        : std_logic_vector(c_VIDEO_WIDTH-1 downto 0);
+    signal w_Grn_Video_Porch        : std_logic_vector(c_VIDEO_WIDTH-1 downto 0);
+    signal w_Blu_Video_Porch        : std_logic_vector(c_VIDEO_WIDTH-1 downto 0);
  
   -- VGA Test Pattern Signals
-    signal w_HSync_TP     : std_logic;
-    signal w_VSync_TP     : std_logic;
-    signal w_Red_Video_TP : std_logic_vector(c_VIDEO_WIDTH-1 downto 0);
-    signal w_Grn_Video_TP : std_logic_vector(c_VIDEO_WIDTH-1 downto 0);
-    signal w_Blu_Video_TP : std_logic_vector(c_VIDEO_WIDTH-1 downto 0);
+    signal w_HSync_TP               : std_logic;
+    signal w_VSync_TP               : std_logic;
+    signal w_Red_Video_TP           : std_logic_vector(c_VIDEO_WIDTH-1 downto 0);
+    signal w_Grn_Video_TP           : std_logic_vector(c_VIDEO_WIDTH-1 downto 0);
+    signal w_Blu_Video_TP           : std_logic_vector(c_VIDEO_WIDTH-1 downto 0);
 
     --data valid flag from keypad
-    signal w_RX_DV : std_logic;
+    signal w_RX_DV                  : std_logic;
 	
 
     --Stores the integer value of the current bet to send to the VGA_gen module
-    signal w_bet : integer range 0 to 9;
-    signal r_bet : integer range 0 to 9;
+    signal w_bet                    : integer range 0 to 9;
     
     --rolling total cash
-    signal w_wallet : integer range 0 to 99 := 25;
+    signal w_wallet                 : integer range 0 to 99 := 25;
 
 	--SWITCH 4 SIGNALS
-	signal r_BTN 	:std_logic := '0';
-	signal w_BTN 	:std_logic;
+	signal r_BTN 	                : std_logic := '0';
+	signal w_BTN 	                : std_logic;
 
     --flag to indicate middle button has been pressed
-	signal r_button_pressed : std_logic := '0';	
+	signal r_button_pressed         : std_logic := '0';	
 	
 	--holds the returned random numbers for each dice 
-	signal w_int_dice_1 : integer range 0 to 6 := 0; --dice 1
-	signal w_int_dice_2 : integer range 0 to 6 := 0; --dice 2
+	signal w_int_dice_1             : integer range 0 to 6  := 0;       --dice 1
+	signal w_int_dice_2             : integer range 0 to 6  := 0;       --dice 2
 
 	--clk divider factors for each dice
 	--dice 2 runs 3 times slower than dice 1
-	constant c_clk_divider_dice_1 : integer := 1;	--1 = no clock division
-	constant c_clk_divider_dice_2 : integer := 3;
+	constant c_clk_divider_dice_1   : integer               := 1;	     --1 = no clock division
+	constant c_clk_divider_dice_2   : integer               := 3;
 
     
     --FSM states that control the game
 	type t_FSM_Main is (s_Splash, s_Idle, s_Bets, s_Roll, s_Tally, s_Win, s_Lose,
                      s_Point_Numbers);
-	signal r_FSM_Main : t_FSM_Main := s_Splash;
+	signal r_FSM_Main               : t_FSM_Main            := s_Splash; --FSM
 
     --Signals used in the FSM
     --stores the value of the point_flag to send to the VGA_gen module
-    signal w_point_flag : std_logic := '0';
+    signal w_point_flag             : std_logic             := '0';
     --sends the FSM state to the VGA_Gen module
-    signal r_gamestate : integer range 0 to 6 := 0;
+    signal r_gamestate              : integer range 0 to 6  := 0;
     
     
     --divided clock for external modules and VGA sync
-    signal r_Clk_25MHz : std_logic := '0';
+    signal r_Clk_25MHz              : std_logic             := '0';
 
     --output from keypad decoder
-    signal w_decoded : std_logic_vector(3 downto 0);
+    signal w_decoded                : std_logic_vector(3 downto 0);
 	
 	
 	
 begin
 	
+    --************************************************************************************
+    --Instantiate keypad
+    --************************************************************************************
 
     --accept input from the PMOD 16 key pad
     keypad_wrapper_inst : entity work.Keypad_Wrapper
@@ -187,32 +193,18 @@ begin
                     o_COL_2 => io_PMOD_3,
                     o_COL_1 => io_PMOD_4,
                     --decoded output
-                    o_Decoded => w_decoded	
+                    o_Decoded => w_decoded,
+                    o_DV => w_RX_DV	
                 );   
 	
     --convert keypad output to Integer
     w_bet <= to_integer(unsigned(w_decoded));
 
-    --set the DV flag to 1 when new info entered on the keypad
-    data_flag_set : process(r_Clk_25MHz) is
-    begin
-        if rising_edge(r_Clk_25MHz) then
-            r_bet <= w_bet;
-                if w_bet /= r_bet then
-                    w_RX_DV <= '1';
-                else 
-                    w_RX_DV <= '0';    
-                end if;
-        end if;
-    --r_bet <= 0;
-    end process;
+    --************************************************************************************
+    --Instantiate Clock divider
+    --************************************************************************************
 
-    --------------------------------------------------------------------------------------
-    --End UART
-    --------------------------------------------------------------------------------------
-
-    --clock divider for VGA
-    --clock divider
+    --clock divider for VGA(25MHz)
     clock_divider_25MHz: entity work.clock_div_pow2
         port map   (
                     i_clk  => i_Clk,
@@ -224,7 +216,7 @@ begin
                     );
 	
     --************************************************************************************
-    --Switches
+    --Instantiate Switches
     --************************************************************************************
 
     --debounce switch 4	
@@ -250,12 +242,9 @@ begin
 		end if;		
 	end process;
 
-    --------------------------------------------------------------------------------------
-    --End Switches
-    --------------------------------------------------------------------------------------
 
     --************************************************************************************
-    --Dice
+    --Instantiate Dice
     --************************************************************************************
 
     --instantiate Dice 1
@@ -280,13 +269,9 @@ begin
 		i_switch => r_button_pressed,
 		o_rand => w_int_dice_2);
 
-	--------------------------------------------------------------------------------------
-    --End Dice
-    --------------------------------------------------------------------------------------		
-
     
     --************************************************************************************
-    --VGA PARTS 
+    --Instantiate VGA PARTS 
     --************************************************************************************
     
     --Generates signals at Horizontal and Vertical Boundaries used to synchronize VGA
@@ -376,10 +361,6 @@ begin
     o_VGA_Blu_1 <= w_Blu_Video_Porch(1);
     o_VGA_Blu_2 <= w_Blu_Video_Porch(2);
     o_VGA_Blu_3 <= w_Blu_Video_Porch(3);
-
-    --------------------------------------------------------------------------------------
-    --End VGA PARTS 
-    --------------------------------------------------------------------------------------
 
 
     --************************************************************************************
